@@ -61,15 +61,17 @@ fun Playlist(modifier: Modifier = Modifier) {
         mutableStateOf<String?>(null)
     }
 
-    var formularioAberto by remember {
+    var formularioAberto by rememberSaveable {
         mutableStateOf(false)
     }
-    var musicaEmEdicao by remember {
-        mutableStateOf<Musica?>(null)
+    var musicaEmEdicaoId by rememberSaveable {
+        mutableStateOf<Long?>(null)
     }
-    var musicaParaExcluir by remember {
-        mutableStateOf<Musica?>(null)
+    var musicaParaExcluirId by rememberSaveable {
+        mutableStateOf<Long?>(null)
     }
+    val musicaEmEdicao = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaEmEdicaoId }
+    val musicaParaExcluir = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaParaExcluirId }
 
     // Reprodução simulada
     var musicaAtualId by rememberSaveable {
@@ -188,7 +190,7 @@ fun Playlist(modifier: Modifier = Modifier) {
             item {
                 Button(
                     onClick = {
-                        musicaEmEdicao = null
+                        musicaEmEdicaoId = null
                         formularioAberto = true
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -236,12 +238,12 @@ fun Playlist(modifier: Modifier = Modifier) {
                     },
 
                     onEditar = {
-                        musicaEmEdicao = musica
+                        musicaEmEdicaoId = musica.id
                         formularioAberto = true
                     },
 
                     onExcluir = {
-                        musicaParaExcluir = musica
+                        musicaParaExcluirId = musica.id
                     }
                 )
             }
@@ -350,7 +352,7 @@ fun Playlist(modifier: Modifier = Modifier) {
 
         AlertDialog(
             onDismissRequest = {
-                musicaParaExcluir = null
+                musicaParaExcluirId = null
             },
 
             title = {
@@ -371,7 +373,7 @@ fun Playlist(modifier: Modifier = Modifier) {
                             estaTocando = false
                         }
 
-                        musicaParaExcluir = null
+                        musicaParaExcluirId = null
                     }
                 ) {
                     Text("Excluir")
@@ -381,7 +383,7 @@ fun Playlist(modifier: Modifier = Modifier) {
             dismissButton = {
                 TextButton(
                     onClick = {
-                        musicaParaExcluir = null
+                        musicaParaExcluirId = null
                     }
                 ) {
                     Text("Cancelar")
@@ -450,9 +452,9 @@ private fun FormularioMusica(
     onCancelar: () -> Unit,
     onSalvar: (String, String, String) -> Unit
 ) {
-    var titulo by remember(musica) { mutableStateOf(musica?.titulo.orEmpty()) }
-    var artista by remember(musica) { mutableStateOf(musica?.artista.orEmpty()) }
-    var genero by remember(musica) { mutableStateOf(musica?.genero ?: generos.first()) }
+    var titulo by rememberSaveable(musica) { mutableStateOf(musica?.titulo.orEmpty()) }
+    var artista by rememberSaveable(musica) { mutableStateOf(musica?.artista.orEmpty()) }
+    var genero by rememberSaveable(musica) { mutableStateOf(musica?.genero ?: generos.first()) }
 
     AlertDialog(
         onDismissRequest = onCancelar,
