@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -66,7 +68,8 @@ private const val MESSAGE_EDITED = "Item salvo com sucesso"
 @Composable
 fun ItemRegistrationScreen(
     modifier: Modifier = Modifier,
-    //Item being edited; null when creating a new one
+    viewModel: MeuViewModel,
+    formKey: String,
     initialItem: ItemRpg? = null,
     onSave: (ItemRpg) -> Unit = {}
 ) {
@@ -74,13 +77,11 @@ fun ItemRegistrationScreen(
     val focusManager = LocalFocusManager.current
     val palette = LocalModePalette.current
 
-    var nome by rememberSaveable { mutableStateOf(initialItem?.itemName ?: "") }
-    var valor by rememberSaveable { mutableStateOf(initialItem?.itemValue?.toString() ?: "") }
-    var descricao by rememberSaveable { mutableStateOf(initialItem?.itemDescription ?: "") }
-    var categoriaSelecionada by rememberSaveable {
-        mutableIntStateOf(listCatItem.indexOf(initialItem?.itemCat).coerceAtLeast(0))
-    }
-    var salvar by rememberSaveable { mutableStateOf(false) }
+    var nome by viewModel::itemNome
+    var valor by viewModel::itemValor
+    var descricao by viewModel::itemDescricao
+    var categoriaSelecionada by viewModel::itemCategoria
+    var salvar by viewModel::itemSalvar
 
     val nomeInvalido = salvar && nome.isBlank()
     val valorInvalido = salvar && valor.isBlank()
@@ -319,6 +320,9 @@ private fun RegistrationField(
 @Composable
 private fun CadastroItensScreenPreview() {
     App_rpgTheme {
-        ItemRegistrationScreen()
+        ItemRegistrationScreen(
+            viewModel = remember { MeuViewModel() },
+            formKey = "preview"
+        )
     }
 }

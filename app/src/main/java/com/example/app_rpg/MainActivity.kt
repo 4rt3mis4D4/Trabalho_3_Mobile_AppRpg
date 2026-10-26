@@ -16,9 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -26,6 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -72,7 +71,6 @@ object Routes {
         if (storeId == null) "store_registration" else "store_registration?$STORE_ID_ARG=$storeId"
 
     const val ITEM_ID_ARG = "itemId"
-    //itemId is optional: missing means a new item is being created
     const val ITEM_REGISTRATION = "item_registration?$ITEM_ID_ARG={$ITEM_ID_ARG}"
 
     fun itemRegistration(itemId: Int? = null) =
@@ -83,7 +81,6 @@ enum class Destination(
     val label: String,
     @param:DrawableRes val iconRes: Int,
     val route: String,
-    //Screens opened from this tab, not shown in the bottom bar; they keep the tab selected
     val internalRoutes: Set<String> = emptySet()
 ) {
     Dice("Dados", R.drawable.ic_dice, Routes.DICE),
@@ -132,9 +129,9 @@ fun App() {
 
     var user by rememberSaveable { mutableStateOf(User()) }
     val mode = user.mode
-    val lojas = remember { mutableStateListOf<LojaRpg>() }
-    val itens = remember { mutableStateListOf<ItemRpg>() }
-    var characterSheet by remember { mutableStateOf(CharacterSheet()) }
+    val viewModel: MeuViewModel = viewModel()
+    val lojas = viewModel.lojas
+    val itens = viewModel.itens
 
     val routeStoreId = backStackEntry?.arguments?.getInt(Routes.STORE_ID_ARG)
     val routeStore = lojas.firstOrNull { it.id == routeStoreId }
@@ -198,7 +195,6 @@ fun App() {
                         )
                     }
 
-                    //Toggles between Player and Master mode
                     NavigationBarItem(
                         selected = false,
                         onClick = {
@@ -206,7 +202,6 @@ fun App() {
                             user = user.copy(mode = newMode)
                             val stillAvailable = newMode.tabs.any { it.isSelected(currentRoute) }
                             if (newMode == Mode.Player && currentRoute == Routes.STORE_REGISTRATION) {
-                                //Creating/editing stores is master-only: go back to the store list
                                 navController.popBackStack(Routes.STORE_LIST, inclusive = false)
                             } else if (!stillAvailable) {
                                 navController.navigateToTab(newMode.tabs.first().route)
@@ -241,12 +236,11 @@ fun App() {
                 navController = navController,
                 startDestination = Routes.DICE
             ) {
-                composable(Routes.DICE) { DiceScreen(contentModifier) }
+                composable(Routes.DICE) { DiceScreen(contentModifier, viewModel) }
                 composable(Routes.CHARACTER_SHEET) {
                     FichaPersonagemScreen(
                         modifier = contentModifier,
-                        sheet = characterSheet,
-                        onSave = { characterSheet = it }
+                        viewModel = viewModel
                     )
                 }
                 composable(Routes.PLAYLIST) { Playlist(contentModifier) }
@@ -254,8 +248,7 @@ fun App() {
                 composable(Routes.ITEMS) {
                     ItemListScreen(
                         modifier = contentModifier,
-                        items = itens,
-                        //No item details screen yet: opening an item edits it
+                        viewModel = viewModel,
                         onItemClick = { item ->
                             navController.navigate(Routes.itemRegistration(item.id))
                         },
@@ -264,10 +257,6 @@ fun App() {
                         },
                         onEdit = { item ->
                             navController.navigate(Routes.itemRegistration(item.id))
-                        },
-                        onDelete = { item ->
-                            itens.removeAll { it.id == item.id }
-                            lojas.replaceAll { it.copy(itemIds = it.itemIds - item.id) }
                         }
                     )
                 }
@@ -286,14 +275,11 @@ fun App() {
 
                     ItemRegistrationScreen(
                         modifier = contentModifier,
+                        viewModel = viewModel,
+                        formKey = entry.id,
                         initialItem = editingItem,
                         onSave = { item ->
-                            val index = itens.indexOfFirst { it.id == item.id }
-                            if (index >= 0) {
-                                itens[index] = item
-                            } else {
-                                itens.add(item.copy(id = (itens.maxOfOrNull { it.id } ?: 0) + 1))
-                            }
+                            viewModel.salvarItem(item)
                             navController.popBackStack()
                         }
                     )
@@ -302,7 +288,7 @@ fun App() {
                 composable(Routes.STORE_LIST) {
                     StoreListScreen(
                         modifier = contentModifier,
-                        lojas = lojas,
+                        viewModel = viewModel,
                         isMaster = mode == Mode.Master,
                         onLojaClick = { loja ->
                             navController.navigate(Routes.store(loja.id))
@@ -312,15 +298,6 @@ fun App() {
                         },
                         onEditar = { loja ->
                             navController.navigate(Routes.storeRegistration(loja.id))
-                        },
-                        onExcluir = { loja ->
-                            lojas.removeAll { it.id == loja.id }
-                        },
-                        onToggleVisibility = { loja ->
-                            val indice = lojas.indexOfFirst { it.id == loja.id }
-                            if (indice >= 0) {
-                                lojas[indice] = loja.copy(visivel = !loja.visivel)
-                            }
                         }
                     )
                 }
@@ -331,18 +308,12 @@ fun App() {
                 ) {
                     StoreScreen(
                         modifier = contentModifier,
-                        descricao = routeStore?.descricao.orEmpty(),
-                        itens = storeItems,
+                        viewModel = viewModel,
+                        lojaId = routeStore?.id,
                         isMaster = mode == Mode.Master,
                         onItemClick = { item ->
                             if (mode == Mode.Master) {
                                 navController.navigate(Routes.itemRegistration(item.id))
-                            }
-                        },
-                        onRemoveItem = { item ->
-                            val index = lojas.indexOfFirst { it.id == routeStore?.id }
-                            if (index >= 0) {
-                                lojas[index] = lojas[index].copy(itemIds = lojas[index].itemIds - item.id)
                             }
                         }
                     )
@@ -362,16 +333,12 @@ fun App() {
 
                     StoreRegistrationScreen(
                         modifier = contentModifier,
+                        viewModel = viewModel,
+                        formKey = entry.id,
                         lojaInicial = editingStore,
-                        items = itens,
                         onCancelar = { navController.popBackStack() },
                         onSalvar = { loja ->
-                            val indice = lojas.indexOfFirst { it.id == loja.id }
-                            if (indice >= 0) {
-                                lojas[indice] = loja
-                            } else {
-                                lojas.add(loja.copy(id = (lojas.maxOfOrNull { it.id } ?: 0) + 1))
-                            }
+                            viewModel.salvarLoja(loja)
                             navController.popBackStack()
                         }
                     )

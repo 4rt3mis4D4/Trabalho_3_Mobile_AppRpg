@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.corBrancoOffWhite
 import com.example.app_rpg.ui.theme.corBrancoPuro
@@ -50,7 +51,7 @@ import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 
 
-private data class DiceStats(
+data class DiceStats(
     val expression: DiceExpression,
     val outcomes: List<Outcome>
 ) {
@@ -65,23 +66,13 @@ private data class DiceStats(
 }
 
 @Composable
-fun DiceScreen(modifier: Modifier = Modifier) {
-    val expressionState = rememberTextFieldState("2d6 + 3")
+fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
+    val expressionState = viewModel.expressionState
 
-    var stats by remember { mutableStateOf<DiceStats?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var stats = viewModel.diceStats
+    var error = viewModel.diceError
 
-    fun submit() {
-        parseDiceExpression(expressionState.text.toString())
-            .onSuccess { expression ->
-                stats = DiceStats(expression, expression.distribution())
-                error = null
-            }
-            .onFailure { failure ->
-                stats = null
-                error = failure.message
-            }
-    }
+    fun submit() = viewModel.calcularDados()
 
     Column(
         modifier = modifier
@@ -424,5 +415,5 @@ fun List<Outcome>.median(): Int {
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun DiceScreenPreview() {
-    DiceScreen(Modifier.fillMaxSize())
+    DiceScreen(Modifier.fillMaxSize(), viewModel())
 }

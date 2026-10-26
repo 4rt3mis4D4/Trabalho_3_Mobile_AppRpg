@@ -53,6 +53,7 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 
 data class AtributoData(val valor: String, val label: String)
@@ -104,19 +105,18 @@ private fun <T> List<T>.replaceAt(index: Int, value: T) =
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun FichaPersonagemScreenPreview(){
-    FichaPersonagemScreen(Modifier)
+    FichaPersonagemScreen(Modifier, viewModel())
 }
 
 @Composable
 fun FichaPersonagemScreen(
     modifier: Modifier,
-    sheet: CharacterSheet = CharacterSheet(),
-    onSave: (CharacterSheet) -> Unit = {}
+    viewModel: MeuViewModel
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
-    var draft by remember(sheet) { mutableStateOf(sheet) }
+    var draft = viewModel.characterDraft
 
     Column(
         modifier = modifier
@@ -160,11 +160,11 @@ fun FichaPersonagemScreen(
         BotoesAcaoSection(
             onCancel = {
                 focusManager.clearFocus()
-                draft = sheet
+                viewModel.cancelarEdicaoFicha()
             },
             onSave = {
                 focusManager.clearFocus()
-                onSave(draft)
+                viewModel.salvarFicha()
                 Toast.makeText(context, "Ficha salva com sucesso", Toast.LENGTH_SHORT).show()
             }
         )

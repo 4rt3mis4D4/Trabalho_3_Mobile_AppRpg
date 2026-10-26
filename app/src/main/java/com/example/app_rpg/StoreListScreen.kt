@@ -54,23 +54,20 @@ import com.example.app_rpg.ui.theme.corPretoPuro
 @Composable
 fun StoreListScreen(
     modifier: Modifier = Modifier,
-    lojas: List<LojaRpg>,
-    //Master manages the stores; players only see the visible ones
+    viewModel: MeuViewModel,
     isMaster: Boolean = true,
     onLojaClick: (LojaRpg) -> Unit = {},
     onAdicionar: () -> Unit = {},
-    onEditar: (LojaRpg) -> Unit = {},
-    onExcluir: (LojaRpg) -> Unit = {},
-    onToggleVisibility: (LojaRpg) -> Unit = {}
+    onEditar: (LojaRpg) -> Unit = {}
 ) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
+    val lojas = viewModel.lojas
+
     val displayedStores = if (isMaster) lojas else lojas.filter { it.visivel }
 
-    var lojaParaExcluir by remember {
-        mutableStateOf<LojaRpg?>(null)
-    }
+    var lojaParaExcluir by viewModel::lojaParaExcluir
 
     Box(
         modifier = modifier
@@ -113,7 +110,7 @@ fun StoreListScreen(
                         onClick = { onLojaClick(loja) },
                         onEditar = { onEditar(loja) },
                         onExcluir = { lojaParaExcluir = loja },
-                        onToggleVisibility = { onToggleVisibility(loja) }
+                        onToggleVisibility = { viewModel.alternarVisibilidadeLoja(loja) }
                     )
                 }
             }
@@ -148,7 +145,7 @@ fun StoreListScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onExcluir(loja)
+                        viewModel.excluirLoja(loja)
                         Toast.makeText(
                             context,
                             "Loja ${loja.nome} excluída",
@@ -304,20 +301,17 @@ private fun AvatarLoja(visivel: Boolean, onClick: (() -> Unit)? = null) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun StoreListScreenPreview() {
-    val lojas = remember {
-        mutableStateListOf(
-            LojaRpg(1, "Ferreiro Anão", "Armas e armaduras forjadas nas montanhas.", null, false),
-            LojaRpg(2, "Taverna do Javali", "Comida quente e bebida gelada.", null, true),
-            LojaRpg(3, "Mercado Negro", "Itens raros, sem perguntas.", null, false),
-            LojaRpg(4, "Estábulo Real", "Montarias para longas viagens.", null, true),
-            LojaRpg(5, "Empório Geral", "Ferramentas e suprimentos de aventura.", null, true)
-        )
+    val viewModel = remember {
+        MeuViewModel().apply {
+            salvarLoja(LojaRpg(0, "Ferreiro Anão", "Armas e armaduras forjadas nas montanhas.", null, false))
+            salvarLoja(LojaRpg(0, "Taverna do Javali", "Comida quente e bebida gelada.", null, true))
+            salvarLoja(LojaRpg(0, "Mercado Negro", "Itens raros, sem perguntas.", null, false))
+            salvarLoja(LojaRpg(0, "Estábulo Real", "Montarias para longas viagens.", null, true))
+            salvarLoja(LojaRpg(0, "Empório Geral", "Ferramentas e suprimentos de aventura.", null, true))
+        }
     }
 
     App_rpgTheme {
-        StoreListScreen(
-            lojas = lojas,
-            onExcluir = { lojas.remove(it) }
-        )
+        StoreListScreen(viewModel = viewModel)
     }
 }

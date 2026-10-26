@@ -64,37 +64,25 @@ data class LojaRpg(
 @Composable
 fun StoreRegistrationScreen(
     modifier: Modifier = Modifier,
+    viewModel: MeuViewModel,
+    formKey: String,
     lojaInicial: LojaRpg? = null,
-    items: List<ItemRpg> = emptyList(),
     onCancelar: () -> Unit = {},
     onSalvar: (LojaRpg) -> Unit = {}
 ) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
-    var nome by rememberSaveable {
-        mutableStateOf(lojaInicial?.nome ?: "")
-    }
+    val items = viewModel.itens
 
-    var descricao by rememberSaveable {
-        mutableStateOf(lojaInicial?.descricao ?: "")
-    }
+    remember(formKey) { viewModel.iniciarFormularioLoja(formKey, lojaInicial) }
 
-    var visivel by rememberSaveable {
-        mutableStateOf(lojaInicial?.visivel ?: true)
-    }
-
-    var itemIds by rememberSaveable {
-        mutableStateOf(lojaInicial?.itemIds.orEmpty())
-    }
-
-    var imagemUri by remember {
-        mutableStateOf(lojaInicial?.imagemUri)
-    }
-
-    var errorName by rememberSaveable {
-        mutableStateOf(false)
-    }
+    var nome by viewModel::lojaNome
+    var descricao by viewModel::lojaDescricao
+    var visivel by viewModel::lojaVisivel
+    var itemIds by viewModel::lojaItemIds
+    var imagemUri by viewModel::lojaImagemUri
+    var errorName by viewModel::lojaErroNome
 
     val selecionarImagem = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -111,7 +99,6 @@ fun StoreRegistrationScreen(
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
-        // NOME
         FieldLabel("Nome")
 
         OutlinedTextField(
@@ -154,7 +141,6 @@ fun StoreRegistrationScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // IMAGEM
         FieldLabel("Imagem")
 
         OutlinedButton(
@@ -191,7 +177,6 @@ fun StoreRegistrationScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // DESCRIÇÃO
         FieldLabel("Descrição")
 
         OutlinedTextField(
@@ -224,7 +209,6 @@ fun StoreRegistrationScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // VISIBILIDADE
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -261,12 +245,10 @@ fun StoreRegistrationScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // BOTÕES
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            //Cancelar
             OutlinedButton(
                 onClick = {
                     Toast.makeText(
@@ -291,7 +273,6 @@ fun StoreRegistrationScreen(
                 )
             }
 
-            //Salvar
             Button(
                 onClick = {
                     if (nome.isBlank()) {

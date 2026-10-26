@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app_rpg.ui.theme.App_rpgTheme
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.MasterPalette
@@ -55,16 +56,16 @@ import com.example.app_rpg.ui.theme.corPretoPuro
 @Composable
 fun ItemListScreen(
     modifier: Modifier = Modifier,
-    items: List<ItemRpg>,
+    viewModel: MeuViewModel,
+    items: List<ItemRpg> = viewModel.itens,
     onItemClick: (ItemRpg) -> Unit = {},
     onAdd: () -> Unit = {},
-    onEdit: (ItemRpg) -> Unit = {},
-    onDelete: (ItemRpg) -> Unit = {}
+    onEdit: (ItemRpg) -> Unit = {}
 ) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
-    var itemToDelete by remember { mutableStateOf<ItemRpg?>(null) }
+    var itemToDelete by viewModel::itemParaExcluir
 
     Box(
         modifier = modifier
@@ -134,7 +135,7 @@ fun ItemListScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDelete(item)
+                        viewModel.excluirItem(item)
                         Toast.makeText(
                             context,
                             "Item ${item.itemName} excluído",
@@ -282,20 +283,17 @@ private fun ItemListCard(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ItemListScreenPreview() {
-    val items = remember {
-        mutableStateListOf(
-            ItemRpg(1, "Espada Longa", 150, "Lâmina de aço temperado.", listCatItem[0]),
-            ItemRpg(2, "Pão de Viagem", 5, "", listCatItem[1]),
-            ItemRpg(3, "Cota de Malha", 300, "Proteção leve e resistente.", listCatItem[2])
-        )
+    val viewModel = remember {
+        MeuViewModel().apply {
+            salvarItem(ItemRpg(0, "Espada Longa", 150, "Lâmina de aço temperado.", listCatItem[0]))
+            salvarItem(ItemRpg(0, "Pão de Viagem", 5, "", listCatItem[1]))
+            salvarItem(ItemRpg(0, "Cota de Malha", 300, "Proteção leve e resistente.", listCatItem[2]))
+        }
     }
 
     App_rpgTheme {
         CompositionLocalProvider(LocalModePalette provides MasterPalette) {
-            ItemListScreen(
-                items = items,
-                onDelete = { items.remove(it) }
-            )
+            ItemListScreen(viewModel = viewModel)
         }
     }
 }

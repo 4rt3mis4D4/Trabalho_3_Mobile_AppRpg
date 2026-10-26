@@ -45,13 +45,16 @@ private const val MESSAGE_BUY = "Compra efetuada com sucesso!"
 @Composable
 fun StoreScreen(
     modifier: Modifier = Modifier,
-    descricao: String = "",
-    itens: List<ItemRpg>,
+    viewModel: MeuViewModel,
+    lojaId: Int?,
     isMaster: Boolean = false,
-    onItemClick: (ItemRpg) -> Unit = {},
-    onRemoveItem: (ItemRpg) -> Unit = {}
+    onItemClick: (ItemRpg) -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    val loja = viewModel.lojas.firstOrNull { it.id == lojaId }
+    val descricao = loja?.descricao.orEmpty()
+    val itens = viewModel.itensDaLoja(loja)
 
     Box(
         modifier = modifier
@@ -99,7 +102,7 @@ fun StoreScreen(
                         onClick = { onItemClick(item) },
                         onAction = {
                             if (isMaster) {
-                                onRemoveItem(item)
+                                viewModel.removerItemDaLoja(loja?.id, item)
                                 Toast.makeText(context, "${item.itemName} removido da loja", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, MESSAGE_BUY, Toast.LENGTH_SHORT).show()
@@ -120,7 +123,7 @@ private fun ItemCard(
     onAction: () -> Unit
 ) {
     val palette = LocalModePalette.current
-    
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
