@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,9 +31,10 @@ private object PlaylistEmMemoria {
     val musicas = mutableStateListOf(
         Musica(1, "Trilha da Taverna", "Artista exemplo", "MPB"),
         Musica(2, "Batalha Final", "Artista exemplo", "Rock"),
-        Musica(3, "Viagem Fantástica", "Artista exemplo", "Pop")
+        Musica(3, "Viagem Fantástica", "Artista exemplo", "Pop"),
+        Musica(4, "Holy", "Justin Bieber", "Pop")
     )
-    private var proximoId = 4L
+    private var proximoId = 5L
 
     fun salvar(id: Long?, titulo: String, artista: String, genero: String) {
         if (id == null) {
@@ -48,115 +50,182 @@ private object PlaylistEmMemoria {
     }
 }
 
+
 @Composable
 fun Playlist(modifier: Modifier = Modifier) {
     val palette = LocalModePalette.current
+    val estadoScroll = rememberLazyListState()
+
     var pesquisa by rememberSaveable { mutableStateOf("") }
-    var generoSelecionado by rememberSaveable { mutableStateOf<String?>(null) }
-    var formularioAberto by remember { mutableStateOf(false) }
-    var musicaEmEdicao by remember { mutableStateOf<Musica?>(null) }
-    var musicaParaExcluir by remember { mutableStateOf<Musica?>(null) }
-
-    // Reprodução simulada: nenhuma mídia é carregada ou executada.
-    var musicaAtualId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var estaTocando by rememberSaveable { mutableStateOf(false) }
-    val musicaAtual = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaAtualId }
-
-    val musicasFiltradas = PlaylistEmMemoria.musicas.filter { musica ->
-        (generoSelecionado == null || musica.genero == generoSelecionado) &&
-                (pesquisa.isBlank() ||
-                        musica.titulo.contains(pesquisa.trim(), ignoreCase = true) ||
-                        musica.artista.contains(pesquisa.trim(), ignoreCase = true))
+    var generoSelecionado by rememberSaveable {
+        mutableStateOf<String?>(null)
     }
 
+    var formularioAberto by remember {
+        mutableStateOf(false)
+    }
+    var musicaEmEdicao by remember {
+        mutableStateOf<Musica?>(null)
+    }
+    var musicaParaExcluir by remember {
+        mutableStateOf<Musica?>(null)
+    }
+
+    // Reprodução simulada
+    var musicaAtualId by rememberSaveable {
+        mutableStateOf<Long?>(null)
+    }
+    var estaTocando by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val musicaAtual = PlaylistEmMemoria.musicas.firstOrNull {
+        it.id == musicaAtualId
+    }
+
+    val musicasFiltradas = PlaylistEmMemoria.musicas.filter { musica ->
+        (generoSelecionado == null ||
+                musica.genero == generoSelecionado) &&
+                (pesquisa.isBlank() ||
+                        musica.titulo.contains(
+                            pesquisa.trim(),
+                            ignoreCase = true
+                        ) ||
+                        musica.artista.contains(
+                            pesquisa.trim(),
+                            ignoreCase = true
+                        ))
+    }
+
+    // Column externa somente para separar
+    // a área rolável da barra de reprodução.
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(corPretoPuro)
-            .padding(24.dp)
     ) {
-        Text(
-            text = "Playlist",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = corBrancoPuro
-        )
-        Spacer(Modifier.height(16.dp))
 
-        TextField(
-            value = pesquisa,
-            onValueChange = { pesquisa = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Pesquisar música ou artista") },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = corCinzaEscuro,
-                unfocusedContainerColor = corCinzaEscuro,
-                focusedTextColor = corBrancoPuro,
-                unfocusedTextColor = corBrancoPuro,
-                focusedPlaceholderColor = corCinzaMedio,
-                unfocusedPlaceholderColor = corCinzaMedio
-            )
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            generos.forEach { genero ->
-                FilterChip(
-                    selected = generoSelecionado == genero,
-                    onClick = {
-                        generoSelecionado = if (generoSelecionado == genero) null else genero
-                    },
-                    label = { Text(genero) },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = corCinzaEscuro,
-                        labelColor = corBrancoPuro,
-                        selectedContainerColor = palette.accent,
-                        selectedLabelColor = corPretoPuro
-                    )
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                musicaEmEdicao = null
-                formularioAberto = true
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = palette.accent)
-        ) {
-            Text("+ Adicionar música")
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Ocupa o espaço disponível e rola independentemente da barra inferior.
+        //Scroll
         LazyColumn(
+            state = estadoScroll,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+
+            contentPadding = PaddingValues(
+                start = 24.dp,
+                end = 24.dp,
+                top = 24.dp,
+                bottom = 16.dp
+            ),
+
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // Título
+            item {
+                Text(
+                    text = "Playlist",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = corBrancoPuro
+                )
+            }
+
+            // Pesquisa
+            item {
+                TextField(
+                    value = pesquisa,
+                    onValueChange = { pesquisa = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text("Pesquisar música ou artista")
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = corCinzaEscuro,
+                        unfocusedContainerColor = corCinzaEscuro,
+                        focusedTextColor = corBrancoPuro,
+                        unfocusedTextColor = corBrancoPuro,
+                        focusedPlaceholderColor = corCinzaMedio,
+                        unfocusedPlaceholderColor = corCinzaMedio
+                    )
+                )
+            }
+
+            // Filtros Pop, Rock e MPB
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    generos.forEach { genero ->
+                        FilterChip(
+                            selected = generoSelecionado == genero,
+                            onClick = {
+                                generoSelecionado =
+                                    if (generoSelecionado == genero) {
+                                        null
+                                    } else {
+                                        genero
+                                    }
+                            },
+                            label = { Text(genero) },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = corCinzaEscuro,
+                                labelColor = corBrancoPuro,
+                                selectedContainerColor = palette.accent,
+                                selectedLabelColor = corPretoPuro
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Botão adicionar música
+            item {
+                Button(
+                    onClick = {
+                        musicaEmEdicao = null
+                        formularioAberto = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = palette.accent
+                    )
+                ) {
+                    Text("+ Adicionar música")
+                }
+            }
+
+            // Mensagem se nenhuma música for encontrada
             if (musicasFiltradas.isEmpty()) {
                 item {
                     Text(
-                        "Nenhuma música encontrada.",
+                        text = "Nenhuma música encontrada.",
                         modifier = Modifier.padding(vertical = 24.dp),
                         color = corCinzaMedio
                     )
                 }
             }
-            items(musicasFiltradas, key = { it.id }) { musica ->
+
+            // Cards das músicas
+            items(
+                items = musicasFiltradas,
+                key = { it.id }
+            ) { musica ->
+
                 MusicaCard(
                     musica = musica,
-                    tocando = musicaAtualId == musica.id && estaTocando,
-                    pausada = musicaAtualId == musica.id && !estaTocando,
+
+                    tocando = musicaAtualId == musica.id &&
+                            estaTocando,
+
+                    pausada = musicaAtualId == musica.id &&
+                            !estaTocando,
+
                     onTocar = {
                         if (musicaAtualId == musica.id) {
                             estaTocando = !estaTocando
@@ -165,45 +234,89 @@ fun Playlist(modifier: Modifier = Modifier) {
                             estaTocando = true
                         }
                     },
+
                     onEditar = {
                         musicaEmEdicao = musica
                         formularioAberto = true
                     },
-                    onExcluir = { musicaParaExcluir = musica }
+
+                    onExcluir = {
+                        musicaParaExcluir = musica
+                    }
                 )
             }
         }
 
+        // Barra fixa de reprodução simulada
         if (musicaAtual != null) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = corCinzaEscuro)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 12.dp
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = corCinzaEscuro
+                )
             ) {
-                Column(Modifier.padding(12.dp)) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
                     Text(
-                        if (estaTocando) "♫ Tocando agora (simulação)" else "⏸ Música pausada (simulação)",
+                        text = if (estaTocando) {
+                            "♫ Tocando agora (simulação)"
+                        } else {
+                            "⏸ Música pausada (simulação)"
+                        },
                         color = palette.accent,
                         fontWeight = FontWeight.Bold
                     )
+
                     Text(
-                        musicaAtual.titulo,
+                        text = musicaAtual.titulo,
                         color = corBrancoPuro,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(musicaAtual.artista, color = corCinzaMedio)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    Text(
+                        text = musicaAtual.artista,
+                        color = corCinzaMedio
+                    )
+
+                    Row(
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(
-                            onClick = { estaTocando = !estaTocando },
-                            colors = ButtonDefaults.buttonColors(containerColor = palette.accent)
+                            onClick = {
+                                estaTocando = !estaTocando
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = palette.accent
+                            )
                         ) {
-                            Text(if (estaTocando) "Pausar" else "Continuar")
+                            Text(
+                                if (estaTocando) {
+                                    "Pausar"
+                                } else {
+                                    "Continuar"
+                                }
+                            )
                         }
-                        TextButton(onClick = {
-                            musicaAtualId = null
-                            estaTocando = false
-                        }) {
-                            Text("Parar", color = corBrancoPuro)
+
+                        TextButton(
+                            onClick = {
+                                musicaAtualId = null
+                                estaTocando = false
+                            }
+                        ) {
+                            Text(
+                                "Parar",
+                                color = corBrancoPuro
+                            )
                         }
                     }
                 }
@@ -211,34 +324,68 @@ fun Playlist(modifier: Modifier = Modifier) {
         }
     }
 
+    // Formulário de cadastro e edição
     if (formularioAberto) {
         FormularioMusica(
             musica = musicaEmEdicao,
-            onCancelar = { formularioAberto = false },
+
+            onCancelar = {
+                formularioAberto = false
+            },
+
             onSalvar = { titulo, artista, genero ->
-                PlaylistEmMemoria.salvar(musicaEmEdicao?.id, titulo, artista, genero)
+                PlaylistEmMemoria.salvar(
+                    musicaEmEdicao?.id,
+                    titulo,
+                    artista,
+                    genero
+                )
                 formularioAberto = false
             }
         )
     }
 
+    // Confirmação de exclusão
     musicaParaExcluir?.let { musica ->
+
         AlertDialog(
-            onDismissRequest = { musicaParaExcluir = null },
-            title = { Text("Excluir música?") },
-            text = { Text("Deseja excluir '${musica.titulo}'?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    PlaylistEmMemoria.excluir(musica.id)
-                    if (musicaAtualId == musica.id) {
-                        musicaAtualId = null
-                        estaTocando = false
-                    }
-                    musicaParaExcluir = null
-                }) { Text("Excluir") }
+            onDismissRequest = {
+                musicaParaExcluir = null
             },
+
+            title = {
+                Text("Excluir música?")
+            },
+
+            text = {
+                Text("Deseja excluir '${musica.titulo}'?")
+            },
+
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        PlaylistEmMemoria.excluir(musica.id)
+
+                        if (musicaAtualId == musica.id) {
+                            musicaAtualId = null
+                            estaTocando = false
+                        }
+
+                        musicaParaExcluir = null
+                    }
+                ) {
+                    Text("Excluir")
+                }
+            },
+
             dismissButton = {
-                TextButton(onClick = { musicaParaExcluir = null }) { Text("Cancelar") }
+                TextButton(
+                    onClick = {
+                        musicaParaExcluir = null
+                    }
+                ) {
+                    Text("Cancelar")
+                }
             }
         )
     }
