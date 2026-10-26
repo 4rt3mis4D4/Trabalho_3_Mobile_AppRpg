@@ -54,13 +54,18 @@ import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 
 data class AtributoData(val valor: String, val label: String)
 data class StatusData(val valor: String, val label: String)
 data class PericiasData(val proficiencia: Int, val bonus: String, val nome: String)
 
+@Entity(tableName = "fichas")
 data class CharacterSheet(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val name: String = "",
     val level: String = "",
     val characterClass: String = "",

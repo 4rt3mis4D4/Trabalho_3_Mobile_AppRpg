@@ -15,12 +15,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.example.app_rpg.ui.theme.*
 
 private val generos = listOf("Pop", "Rock", "MPB")
 
+@Entity(tableName = "musicas")
 data class Musica(
-    val id: Long,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val titulo: String,
     val artista: String,
     val genero: String
@@ -34,9 +38,9 @@ private object PlaylistEmMemoria {
         Musica(3, "Viagem Fantástica", "Artista exemplo", "Pop"),
         Musica(4, "Holy", "Justin Bieber", "Pop")
     )
-    private var proximoId = 5L
+    private var proximoId = 5
 
-    fun salvar(id: Long?, titulo: String, artista: String, genero: String) {
+    fun salvar(id: Int?, titulo: String, artista: String, genero: String) {
         if (id == null) {
             musicas.add(Musica(proximoId++, titulo, artista, genero))
         } else {
@@ -45,7 +49,7 @@ private object PlaylistEmMemoria {
         }
     }
 
-    fun excluir(id: Long) {
+    fun excluir(id: Int) {
         musicas.removeAll { it.id == id }
     }
 }
@@ -65,17 +69,17 @@ fun Playlist(modifier: Modifier = Modifier) {
         mutableStateOf(false)
     }
     var musicaEmEdicaoId by rememberSaveable {
-        mutableStateOf<Long?>(null)
+        mutableStateOf<Int?>(null)
     }
     var musicaParaExcluirId by rememberSaveable {
-        mutableStateOf<Long?>(null)
+        mutableStateOf<Int?>(null)
     }
     val musicaEmEdicao = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaEmEdicaoId }
     val musicaParaExcluir = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaParaExcluirId }
 
     // Reprodução simulada
     var musicaAtualId by rememberSaveable {
-        mutableStateOf<Long?>(null)
+        mutableStateOf<Int?>(null)
     }
     var estaTocando by rememberSaveable {
         mutableStateOf(false)

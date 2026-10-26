@@ -1,14 +1,18 @@
 package com.example.app_rpg
 
 import androidx.annotation.DrawableRes
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 data class itemCategory(
     val nome: String,
     @param:DrawableRes val iconsRes: Int
 )
 
+@Entity(tableName = "itens")
 data class ItemRpg(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val itemName: String,
     val itemValue: Int,
     val itemDescription: String,
