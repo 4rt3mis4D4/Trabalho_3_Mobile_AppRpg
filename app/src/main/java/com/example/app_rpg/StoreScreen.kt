@@ -53,14 +53,13 @@ fun StoreScreen(
 ) {
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        viewModel.carregarLojas()
-        viewModel.carregarItens()
+    LaunchedEffect(lojaId) {
+        if (lojaId != null) viewModel.carregarLoja(lojaId)
     }
 
-    val loja = viewModel.lojas.firstOrNull { it.id == lojaId }
+    val loja = viewModel.lojaAtual?.takeIf { it.id == lojaId }
     val descricao = loja?.descricao.orEmpty()
-    val itens = viewModel.itensDaLoja(loja)
+    val itens = if (loja != null) viewModel.itensDaLojaAtual else emptyList()
 
     Box(
         modifier = modifier
@@ -108,7 +107,7 @@ fun StoreScreen(
                         onClick = { onItemClick(item) },
                         onAction = {
                             if (isMaster) {
-                                viewModel.removerItemDaLoja(loja?.id, item)
+                                viewModel.removerItemDaLoja(item)
                                 Toast.makeText(context, "${item.itemName} removido da loja", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, MESSAGE_BUY, Toast.LENGTH_SHORT).show()

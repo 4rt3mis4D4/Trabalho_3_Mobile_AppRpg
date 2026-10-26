@@ -131,13 +131,11 @@ fun App() {
     val mode = user.mode
     val viewModel: MeuViewModel = viewModel()
     val lojas = viewModel.lojas
-    val itens = viewModel.itens
 
-    val routeStoreId = backStackEntry?.arguments?.getInt(Routes.STORE_ID_ARG)
-    val routeStore = lojas.firstOrNull { it.id == routeStoreId }
-    val storeItems = itens.filter { routeStore != null && it.id in routeStore.itemIds }
-    val routeItemId = backStackEntry?.arguments?.getInt(Routes.ITEM_ID_ARG)
-    val routeItem = itens.firstOrNull { it.id == routeItemId }
+    val routeStoreId = backStackEntry?.arguments?.getInt(Routes.STORE_ID_ARG, -1) ?: -1
+    val routeStore = viewModel.lojaAtual?.takeIf { it.id == routeStoreId }
+    val storeItemCount = if (routeStore != null) viewModel.itensDaLojaAtual.size else 0
+    val routeItemId = backStackEntry?.arguments?.getInt(Routes.ITEM_ID_ARG, -1) ?: -1
     val tab = Destination.entries.firstOrNull { it.route == currentRoute }
 
     val palette = mode.palette
@@ -150,12 +148,12 @@ fun App() {
                 AppTopBar(
                     title = when (currentRoute) {
                         Routes.STORE -> routeStore?.nome ?: "Loja"
-                        Routes.STORE_REGISTRATION -> if (routeStore == null) "Criar Loja" else "Editar Loja"
-                        Routes.ITEM_REGISTRATION -> if (routeItem == null) "Criar Item" else "Editar Item"
+                        Routes.STORE_REGISTRATION -> if (routeStoreId == -1) "Criar Loja" else "Editar Loja"
+                        Routes.ITEM_REGISTRATION -> if (routeItemId == -1) "Criar Item" else "Editar Item"
                         else -> tab?.label.orEmpty()
                     },
                     subtitle = if (currentRoute == Routes.STORE) {
-                        if (storeItems.size == 1) "1 item à venda" else "${storeItems.size} itens à venda"
+                        if (storeItemCount == 1) "1 item à venda" else "$storeItemCount itens à venda"
                     } else {
                         null
                     },
@@ -272,14 +270,13 @@ fun App() {
                         }
                     )
                 ) { entry ->
-                    val itemId = entry.arguments?.getInt(Routes.ITEM_ID_ARG)
-                    val editingItem = itens.firstOrNull { it.id == itemId }
+                    val itemId = entry.arguments?.getInt(Routes.ITEM_ID_ARG)?.takeIf { it != -1 }
 
                     ItemRegistrationScreen(
                         modifier = contentModifier,
                         viewModel = viewModel,
                         formKey = entry.id,
-                        initialItem = editingItem,
+                        itemId = itemId,
                         onSave = { item ->
                             viewModel.salvarItem(item)
                             navController.popBackStack()
@@ -307,11 +304,11 @@ fun App() {
                 composable(
                     route = Routes.STORE,
                     arguments = listOf(navArgument(Routes.STORE_ID_ARG) { type = NavType.IntType })
-                ) {
+                ) { entry ->
                     StoreScreen(
                         modifier = contentModifier,
                         viewModel = viewModel,
-                        lojaId = routeStore?.id,
+                        lojaId = entry.arguments?.getInt(Routes.STORE_ID_ARG),
                         isMaster = mode == Mode.Master,
                         onItemClick = { item ->
                             if (mode == Mode.Master) {

@@ -168,13 +168,34 @@ class MeuViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun itensDaLoja(loja: LojaRpg?): List<ItemRpg> =
-        _itens.filter { loja != null && it.id in loja.itemIds }
+    var lojaAtual by mutableStateOf<LojaRpg?>(null)
+        private set
 
-    fun removerItemDaLoja(lojaId: Int?, item: ItemRpg) {
-        val loja = _lojas.firstOrNull { it.id == lojaId } ?: return
+    var itensDaLojaAtual by mutableStateOf<List<ItemRpg>>(emptyList())
+        private set
+
+    suspend fun carregarLoja(id: Int) {
+        if (lojaAtual?.id != id) {
+            lojaAtual = null
+            itensDaLojaAtual = emptyList()
+        }
+        executarNoBanco("Erro ao buscar loja $id") { recarregarLojaAtual(id) }.join()
+    }
+
+    private suspend fun recarregarLojaAtual(id: Int) {
+        val loja = lojaDao.buscarPorId(id)
+        val itensDaLoja = loja?.let { itemDao.buscarPorIds(it.itemIds.toList()) }.orEmpty()
+        withContext(Dispatchers.Main) {
+            lojaAtual = loja
+            itensDaLojaAtual = itensDaLoja
+        }
+    }
+
+    fun removerItemDaLoja(item: ItemRpg) {
+        val loja = lojaAtual ?: return
         executarNoBanco("Erro ao remover item da loja") {
             lojaDao.atualizar(loja.copy(itemIds = loja.itemIds - item.id))
+            recarregarLojaAtual(loja.id)
             recarregarLojas()
         }
     }
@@ -223,9 +244,25 @@ class MeuViewModel(application: Application) : AndroidViewModel(application) {
     var itemCategoria by mutableIntStateOf(0)
     var itemSalvar by mutableStateOf(false)
 
-    fun iniciarFormularioItem(chave: String, item: ItemRpg?) {
+    var itemEmEdicaoId by mutableStateOf<Int?>(null)
+        private set
+
+    suspend fun abrirFormularioItem(chave: String, itemId: Int?) {
         if (itemFormKey == chave) return
         itemFormKey = chave
+        itemEmEdicaoId = itemId
+        preencherFormularioItem(null)
+        if (itemId == null) return
+        executarNoBanco("Erro ao buscar item $itemId") {
+            val item = itemDao.buscarPorId(itemId)
+            withContext(Dispatchers.Main) {
+                itemEmEdicaoId = item?.id
+                preencherFormularioItem(item)
+            }
+        }.join()
+    }
+
+    private fun preencherFormularioItem(item: ItemRpg?) {
         itemNome = item?.itemName ?: ""
         itemValor = item?.itemValue?.toString() ?: ""
         itemDescricao = item?.itemDescription ?: ""
