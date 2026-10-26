@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ItemRpg::class, LojaRpg::class, CharacterSheet::class, Musica::class],
@@ -20,6 +21,18 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun musicaDao(): MusicaDao
 
     companion object {
+        private val musicasIniciais = object : Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """INSERT INTO musicas (titulo, artista, genero) VALUES
+                        ('Trilha da Taverna', 'Artista exemplo', 'MPB'),
+                        ('Batalha Final', 'Artista exemplo', 'Rock'),
+                        ('Viagem Fantástica', 'Artista exemplo', 'Pop'),
+                        ('Holy', 'Justin Bieber', 'Pop')"""
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -29,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_rpg.db"
-                ).build()
+                ).addCallback(musicasIniciais).build()
                 INSTANCE = instance
                 instance
             }

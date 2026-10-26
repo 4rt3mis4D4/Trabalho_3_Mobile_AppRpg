@@ -1,5 +1,7 @@
 package com.example.app_rpg
 
+import androidx.compose.runtime.LaunchedEffect
+import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,7 +55,6 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -110,7 +111,7 @@ private fun <T> List<T>.replaceAt(index: Int, value: T) =
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun FichaPersonagemScreenPreview(){
-    FichaPersonagemScreen(Modifier, viewModel())
+    FichaPersonagemScreen(Modifier, remember { MeuViewModel(Application()) })
 }
 
 @Composable
@@ -121,7 +122,11 @@ fun FichaPersonagemScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
-    var draft = viewModel.characterDraft
+    val draft = viewModel.characterDraft
+
+    LaunchedEffect(Unit) {
+        viewModel.carregarFicha()
+    }
 
     Column(
         modifier = modifier
@@ -135,31 +140,31 @@ fun FichaPersonagemScreen(
         HeaderSection(
             name = draft.name,
             level = draft.level,
-            onNameChange = { draft = draft.copy(name = it) },
-            onLevelChange = { draft = draft.copy(level = it) }
+            onNameChange = { viewModel.atualizarRascunhoFicha(draft.copy(name = it)) },
+            onLevelChange = { viewModel.atualizarRascunhoFicha(draft.copy(level = it)) }
         )
         ClasseRacaSection(
             characterClass = draft.characterClass,
             race = draft.race,
-            onClassChange = { draft = draft.copy(characterClass = it) },
-            onRaceChange = { draft = draft.copy(race = it) }
+            onClassChange = { viewModel.atualizarRascunhoFicha(draft.copy(characterClass = it)) },
+            onRaceChange = { viewModel.atualizarRascunhoFicha(draft.copy(race = it)) }
         )
         AtributosSection(
             attributes = draft.attributes,
             onChange = { index, attribute ->
-                draft = draft.copy(attributes = draft.attributes.replaceAt(index, attribute))
+                viewModel.atualizarRascunhoFicha(draft.copy(attributes = draft.attributes.replaceAt(index, attribute)))
             }
         )
         StatusSection(
             status = draft.status,
             onChange = { index, status ->
-                draft = draft.copy(status = draft.status.replaceAt(index, status))
+                viewModel.atualizarRascunhoFicha(draft.copy(status = draft.status.replaceAt(index, status)))
             }
         )
         PericiaSection(
             skills = draft.skills,
             onChange = { index, skill ->
-                draft = draft.copy(skills = draft.skills.replaceAt(index, skill))
+                viewModel.atualizarRascunhoFicha(draft.copy(skills = draft.skills.replaceAt(index, skill)))
             }
         )
         BotoesAcaoSection(

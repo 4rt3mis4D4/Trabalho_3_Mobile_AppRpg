@@ -1,5 +1,6 @@
 package com.example.app_rpg
 
+import androidx.compose.runtime.LaunchedEffect
 import android.net.Uri
 import android.widget.Toast
 import androidx.room.Entity
@@ -78,6 +79,10 @@ fun StoreRegistrationScreen(
     val context = LocalContext.current
 
     val items = viewModel.itens
+
+    LaunchedEffect(Unit) {
+        viewModel.carregarItens()
+    }
 
     remember(formKey) { viewModel.iniciarFormularioLoja(formKey, lojaInicial) }
 

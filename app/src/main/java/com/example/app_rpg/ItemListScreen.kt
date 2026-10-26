@@ -1,5 +1,7 @@
 package com.example.app_rpg
 
+import androidx.compose.runtime.LaunchedEffect
+import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -66,6 +68,10 @@ fun ItemListScreen(
     val context = LocalContext.current
 
     var itemToDelete by viewModel::itemParaExcluir
+
+    LaunchedEffect(Unit) {
+        viewModel.carregarItens()
+    }
 
     Box(
         modifier = modifier
@@ -283,17 +289,15 @@ private fun ItemListCard(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ItemListScreenPreview() {
-    val viewModel = remember {
-        MeuViewModel().apply {
-            salvarItem(ItemRpg(0, "Espada Longa", 150, "Lâmina de aço temperado.", listCatItem[0]))
-            salvarItem(ItemRpg(0, "Pão de Viagem", 5, "", listCatItem[1]))
-            salvarItem(ItemRpg(0, "Cota de Malha", 300, "Proteção leve e resistente.", listCatItem[2]))
-        }
-    }
+    val items = listOf(
+        ItemRpg(1, "Espada Longa", 150, "Lâmina de aço temperado.", listCatItem[0]),
+        ItemRpg(2, "Pão de Viagem", 5, "", listCatItem[1]),
+        ItemRpg(3, "Cota de Malha", 300, "Proteção leve e resistente.", listCatItem[2])
+    )
 
     App_rpgTheme {
         CompositionLocalProvider(LocalModePalette provides MasterPalette) {
-            ItemListScreen(viewModel = viewModel)
+            ItemListScreen(viewModel = remember { MeuViewModel(Application()) }, items = items)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.app_rpg
 
+import androidx.compose.runtime.LaunchedEffect
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -51,6 +52,11 @@ fun StoreScreen(
     onItemClick: (ItemRpg) -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.carregarLojas()
+        viewModel.carregarItens()
+    }
 
     val loja = viewModel.lojas.firstOrNull { it.id == lojaId }
     val descricao = loja?.descricao.orEmpty()

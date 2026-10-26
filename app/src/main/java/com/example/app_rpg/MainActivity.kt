@@ -244,7 +244,7 @@ fun App() {
                     )
                 }
                 composable(Routes.PLAYLIST) {
-                    Playlist(contentModifier)
+                    Playlist(contentModifier, viewModel)
                 }
 
                 composable(Routes.ITEMS) {

@@ -1,5 +1,6 @@
 package com.example.app_rpg
 
+import android.app.Application
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
@@ -76,6 +77,8 @@ fun ItemRegistrationScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val palette = LocalModePalette.current
+
+    remember(formKey) { viewModel.iniciarFormularioItem(formKey, initialItem) }
 
     var nome by viewModel::itemNome
     var valor by viewModel::itemValor
@@ -321,7 +324,7 @@ private fun RegistrationField(
 private fun CadastroItensScreenPreview() {
     App_rpgTheme {
         ItemRegistrationScreen(
-            viewModel = remember { MeuViewModel() },
+            viewModel = remember { MeuViewModel(Application()) },
             formKey = "preview"
         )
     }

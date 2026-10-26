@@ -1,5 +1,7 @@
 package com.example.app_rpg
 
+import androidx.compose.runtime.LaunchedEffect
+import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -56,6 +58,7 @@ import com.example.app_rpg.ui.theme.corPretoPuro
 fun StoreListScreen(
     modifier: Modifier = Modifier,
     viewModel: MeuViewModel,
+    lojas: List<LojaRpg> = viewModel.lojas,
     isMaster: Boolean = true,
     onLojaClick: (LojaRpg) -> Unit = {},
     onAdicionar: () -> Unit = {},
@@ -64,7 +67,9 @@ fun StoreListScreen(
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
-    val lojas = viewModel.lojas
+    LaunchedEffect(Unit) {
+        viewModel.carregarLojas()
+    }
 
     val displayedStores = if (isMaster) lojas else lojas.filter { it.visivel }
 
@@ -305,17 +310,15 @@ private fun AvatarLoja(visivel: Boolean, onClick: (() -> Unit)? = null) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun StoreListScreenPreview() {
-    val viewModel = remember {
-        MeuViewModel().apply {
-            salvarLoja(LojaRpg(0, "Ferreiro Anão", "Armas e armaduras forjadas nas montanhas.", null, false))
-            salvarLoja(LojaRpg(0, "Taverna do Javali", "Comida quente e bebida gelada.", null, true))
-            salvarLoja(LojaRpg(0, "Mercado Negro", "Itens raros, sem perguntas.", null, false))
-            salvarLoja(LojaRpg(0, "Estábulo Real", "Montarias para longas viagens.", null, true))
-            salvarLoja(LojaRpg(0, "Empório Geral", "Ferramentas e suprimentos de aventura.", null, true))
-        }
-    }
+    val lojas = listOf(
+        LojaRpg(1, "Ferreiro Anão", "Armas e armaduras forjadas nas montanhas.", null, false),
+        LojaRpg(2, "Taverna do Javali", "Comida quente e bebida gelada.", null, true),
+        LojaRpg(3, "Mercado Negro", "Itens raros, sem perguntas.", null, false),
+        LojaRpg(4, "Estábulo Real", "Montarias para longas viagens.", null, true),
+        LojaRpg(5, "Empório Geral", "Ferramentas e suprimentos de aventura.", null, true)
+    )
 
     App_rpgTheme {
-        StoreListScreen(viewModel = viewModel)
+        StoreListScreen(viewModel = remember { MeuViewModel(Application()) }, lojas = lojas)
     }
 }

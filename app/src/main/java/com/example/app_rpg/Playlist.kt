@@ -30,35 +30,15 @@ data class Musica(
     val genero: String
 )
 
-// Simulação em memória, substituir pelo banco depois.
-private object PlaylistEmMemoria {
-    val musicas = mutableStateListOf(
-        Musica(1, "Trilha da Taverna", "Artista exemplo", "MPB"),
-        Musica(2, "Batalha Final", "Artista exemplo", "Rock"),
-        Musica(3, "Viagem Fantástica", "Artista exemplo", "Pop"),
-        Musica(4, "Holy", "Justin Bieber", "Pop")
-    )
-    private var proximoId = 5
-
-    fun salvar(id: Int?, titulo: String, artista: String, genero: String) {
-        if (id == null) {
-            musicas.add(Musica(proximoId++, titulo, artista, genero))
-        } else {
-            val indice = musicas.indexOfFirst { it.id == id }
-            if (indice >= 0) musicas[indice] = Musica(id, titulo, artista, genero)
-        }
-    }
-
-    fun excluir(id: Int) {
-        musicas.removeAll { it.id == id }
-    }
-}
-
-
 @Composable
-fun Playlist(modifier: Modifier = Modifier) {
+fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
     val palette = LocalModePalette.current
     val estadoScroll = rememberLazyListState()
+    val musicas = viewModel.musicas
+
+    LaunchedEffect(Unit) {
+        viewModel.carregarMusicas()
+    }
 
     var pesquisa by rememberSaveable { mutableStateOf("") }
     var generoSelecionado by rememberSaveable {
@@ -74,8 +54,8 @@ fun Playlist(modifier: Modifier = Modifier) {
     var musicaParaExcluirId by rememberSaveable {
         mutableStateOf<Int?>(null)
     }
-    val musicaEmEdicao = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaEmEdicaoId }
-    val musicaParaExcluir = PlaylistEmMemoria.musicas.firstOrNull { it.id == musicaParaExcluirId }
+    val musicaEmEdicao = musicas.firstOrNull { it.id == musicaEmEdicaoId }
+    val musicaParaExcluir = musicas.firstOrNull { it.id == musicaParaExcluirId }
 
     // Reprodução simulada
     var musicaAtualId by rememberSaveable {
@@ -85,11 +65,11 @@ fun Playlist(modifier: Modifier = Modifier) {
         mutableStateOf(false)
     }
 
-    val musicaAtual = PlaylistEmMemoria.musicas.firstOrNull {
+    val musicaAtual = musicas.firstOrNull {
         it.id == musicaAtualId
     }
 
-    val musicasFiltradas = PlaylistEmMemoria.musicas.filter { musica ->
+    val musicasFiltradas = musicas.filter { musica ->
         (generoSelecionado == null ||
                 musica.genero == generoSelecionado) &&
                 (pesquisa.isBlank() ||
@@ -340,11 +320,13 @@ fun Playlist(modifier: Modifier = Modifier) {
             },
 
             onSalvar = { titulo, artista, genero ->
-                PlaylistEmMemoria.salvar(
-                    musicaEmEdicao?.id,
-                    titulo,
-                    artista,
-                    genero
+                viewModel.salvarMusica(
+                    Musica(
+                        id = musicaEmEdicao?.id ?: 0,
+                        titulo = titulo,
+                        artista = artista,
+                        genero = genero
+                    )
                 )
                 formularioAberto = false
             }
@@ -370,7 +352,7 @@ fun Playlist(modifier: Modifier = Modifier) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        PlaylistEmMemoria.excluir(musica.id)
+                        viewModel.excluirMusica(musica)
 
                         if (musicaAtualId == musica.id) {
                             musicaAtualId = null
