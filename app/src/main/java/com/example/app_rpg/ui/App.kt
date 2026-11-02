@@ -18,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -29,7 +28,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.app_rpg.ui.theme.App_rpgTheme
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.MasterPalette
 import com.example.app_rpg.ui.theme.ModePalette
@@ -39,7 +37,11 @@ import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.R
+import com.example.app_rpg.AppRpgApplication
 import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.viewmodel.MusicaViewModel
+import com.example.app_rpg.viewmodel.MusicaViewModelFactory
+import androidx.compose.ui.platform.LocalContext
 
 object Routes {
     const val DICE = "dice"
@@ -115,7 +117,11 @@ fun App() {
 
     var user by rememberSaveable { mutableStateOf(User()) }
     val mode = user.mode
+    val app = LocalContext.current.applicationContext as AppRpgApplication
     val viewModel: MeuViewModel = viewModel()
+    val musicaViewModel: MusicaViewModel = viewModel(
+        factory = MusicaViewModelFactory(app.musicaRepository)
+    )
     val lojas = viewModel.lojas
 
     val routeStoreId = backStackEntry?.arguments?.getInt(Routes.STORE_ID_ARG, -1) ?: -1
@@ -228,7 +234,7 @@ fun App() {
                     )
                 }
                 composable(Routes.PLAYLIST) {
-                    Playlist(contentModifier, viewModel)
+                    Playlist(contentModifier, musicaViewModel)
                 }
 
                 composable(Routes.ITEMS) {
@@ -330,13 +336,5 @@ fun App() {
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun AppPreview() {
-    App_rpgTheme {
-        App()
     }
 }

@@ -11,3 +11,5 @@ data class Musica(
     val artista: String,
     val genero: String
 )
+
+val generosMusica = listOf("Pop", "Rock", "MPB")

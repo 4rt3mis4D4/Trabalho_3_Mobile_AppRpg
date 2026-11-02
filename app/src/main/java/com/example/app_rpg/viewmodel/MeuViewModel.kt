@@ -23,7 +23,6 @@ import com.example.app_rpg.data.local.AppDatabase
 import com.example.app_rpg.data.local.CharacterSheet
 import com.example.app_rpg.data.local.ItemRpg
 import com.example.app_rpg.data.local.LojaRpg
-import com.example.app_rpg.data.local.Musica
 import com.example.app_rpg.data.local.listCatItem
 
 private const val TAG = "MeuViewModel"
@@ -34,7 +33,6 @@ class MeuViewModel(application: Application) : AndroidViewModel(application) {
     private val itemDao by lazy { banco.itemDao() }
     private val lojaDao by lazy { banco.lojaDao() }
     private val fichaDao by lazy { banco.fichaDao() }
-    private val musicaDao by lazy { banco.musicaDao() }
 
     private fun executarNoBanco(mensagemErro: String, operacao: suspend () -> Unit): Job =
         CoroutineScope(Dispatchers.IO).launch {
@@ -213,35 +211,6 @@ class MeuViewModel(application: Application) : AndroidViewModel(application) {
         executarNoBanco("Erro ao salvar loja") {
             if (loja.id == 0) lojaDao.inserir(loja) else lojaDao.atualizar(loja)
             recarregarLojas()
-        }
-    }
-
-    private val _musicas = mutableStateListOf<Musica>()
-    val musicas: List<Musica> = _musicas
-
-    suspend fun carregarMusicas() {
-        executarNoBanco("Erro ao buscar músicas") { recarregarMusicas() }.join()
-    }
-
-    private suspend fun recarregarMusicas() {
-        val todas = musicaDao.buscarTodos()
-        withContext(Dispatchers.Main) {
-            _musicas.clear()
-            _musicas.addAll(todas)
-        }
-    }
-
-    fun salvarMusica(musica: Musica) {
-        executarNoBanco("Erro ao salvar música") {
-            if (musica.id == 0) musicaDao.inserir(musica) else musicaDao.atualizar(musica)
-            recarregarMusicas()
-        }
-    }
-
-    fun excluirMusica(musica: Musica) {
-        executarNoBanco("Erro ao excluir música") {
-            musicaDao.deletar(musica)
-            recarregarMusicas()
         }
     }
 
