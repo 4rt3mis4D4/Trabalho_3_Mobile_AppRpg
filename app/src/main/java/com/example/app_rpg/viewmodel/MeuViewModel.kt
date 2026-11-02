@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.viewmodel
 
 import android.app.Application
 import android.net.Uri
@@ -16,6 +16,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.app_rpg.data.dice.DiceStats
+import com.example.app_rpg.data.dice.distribution
+import com.example.app_rpg.data.dice.parseDiceExpression
+import com.example.app_rpg.data.local.AppDatabase
+import com.example.app_rpg.data.local.CharacterSheet
+import com.example.app_rpg.data.local.ItemRpg
+import com.example.app_rpg.data.local.LojaRpg
+import com.example.app_rpg.data.local.Musica
+import com.example.app_rpg.data.local.listCatItem
 
 private const val TAG = "MeuViewModel"
 

@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete

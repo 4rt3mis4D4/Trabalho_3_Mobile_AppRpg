@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,20 +15,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import com.example.app_rpg.ui.theme.*
+import com.example.app_rpg.data.local.Musica
+import com.example.app_rpg.viewmodel.MeuViewModel
 
 private val generos = listOf("Pop", "Rock", "MPB")
-
-@Entity(tableName = "musicas")
-data class Musica(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val titulo: String,
-    val artista: String,
-    val genero: String
-)
 
 @Composable
 fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {

@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.runtime.LaunchedEffect
 import android.app.Application
@@ -54,6 +54,10 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
+import com.example.app_rpg.R
+import com.example.app_rpg.data.local.ItemRpg
+import com.example.app_rpg.data.local.listCatItem
+import com.example.app_rpg.viewmodel.MeuViewModel
 
 @Composable
 fun ItemListScreen(

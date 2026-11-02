@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.data.local
 
 import android.net.Uri
 import androidx.room.TypeConverter

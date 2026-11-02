@@ -1,10 +1,7 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.runtime.LaunchedEffect
-import android.net.Uri
 import android.widget.Toast
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -54,17 +51,10 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
-
-@Entity(tableName = "lojas")
-data class LojaRpg(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val nome : String,
-    val descricao: String,
-    val imagemUri: Uri?,
-    val visivel: Boolean,
-    val itemIds: Set<Int> = emptySet()
-)
+import com.example.app_rpg.R
+import com.example.app_rpg.data.local.ItemRpg
+import com.example.app_rpg.data.local.LojaRpg
+import com.example.app_rpg.viewmodel.MeuViewModel
 
 @Composable
 fun StoreRegistrationScreen(
