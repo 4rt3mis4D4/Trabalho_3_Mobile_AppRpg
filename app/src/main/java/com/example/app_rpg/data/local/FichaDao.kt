@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FichaDao {
@@ -13,7 +14,7 @@ interface FichaDao {
     suspend fun inserir(ficha: CharacterSheet): Long
 
     @Query("SELECT * FROM fichas ORDER BY id")
-    suspend fun buscarTodos(): List<CharacterSheet>
+    fun buscarTodos(): Flow<List<CharacterSheet>>
 
     @Update
     suspend fun atualizar(ficha: CharacterSheet)

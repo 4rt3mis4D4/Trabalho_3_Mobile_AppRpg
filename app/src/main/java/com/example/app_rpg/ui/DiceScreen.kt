@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,7 +39,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.corBrancoOffWhite
 import com.example.app_rpg.ui.theme.corBrancoPuro
@@ -50,7 +46,9 @@ import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.data.dice.DiceStats
-import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.viewmodel.DiceUiState
+import com.example.app_rpg.viewmodel.DiceViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 private fun DiceStats.toBars(): List<Bar> = outcomes.map { outcome ->
@@ -62,14 +60,24 @@ private fun DiceStats.toBars(): List<Bar> = outcomes.map { outcome ->
 }
 
 @Composable
-fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
-    val expressionState = viewModel.expressionState
+fun DiceScreen(modifier: Modifier = Modifier, viewModel: DiceViewModel) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var stats = viewModel.diceStats
-    var error = viewModel.diceError
+    DiceContent(
+        modifier = modifier,
+        uiState = uiState,
+        onExpressaoChange = viewModel::atualizarExpressao,
+        onSubmit = viewModel::calcular
+    )
+}
 
-    fun submit() = viewModel.calcularDados()
-
+@Composable
+private fun DiceContent(
+    modifier: Modifier = Modifier,
+    uiState: DiceUiState,
+    onExpressaoChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
     Column(
         modifier = modifier
             .background(corPretoPuro)
@@ -78,12 +86,13 @@ fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ExpressionSection(
-            state = expressionState,
-            error = error,
-            onSubmit = ::submit
+            expressao = uiState.expressao,
+            error = uiState.erro,
+            onExpressaoChange = onExpressaoChange,
+            onSubmit = onSubmit
         )
 
-        val currentStats = stats
+        val currentStats = uiState.stats
         DataSection(currentStats)
 
         if (currentStats != null) {
@@ -101,8 +110,9 @@ fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
 
 @Composable
 private fun ExpressionSection(
-    state: TextFieldState,
+    expressao: String,
     error: String?,
+    onExpressaoChange: (String) -> Unit,
     onSubmit: () -> Unit
 ) {
     val palette = LocalModePalette.current
@@ -114,10 +124,11 @@ private fun ExpressionSection(
     ) {
         TextField(
             modifier = Modifier.weight(1f),
-            state = state,
+            value = expressao,
+            onValueChange = onExpressaoChange,
             label = { Text("Expressão") },
             placeholder = { Text("2d6 + 3") },
-            lineLimits = TextFieldLineLimits.SingleLine,
+            singleLine = true,
             isError = error != null,
             supportingText = error?.let { message -> { Text(message) } },
             shape = RoundedCornerShape(14.dp),
@@ -326,5 +337,5 @@ fun BarChart(
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun DiceScreenPreview() {
-    DiceScreen(Modifier.fillMaxSize(), viewModel())
+    DiceContent(Modifier.fillMaxSize(), DiceUiState(), {}, {})
 }

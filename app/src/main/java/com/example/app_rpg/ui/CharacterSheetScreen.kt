@@ -1,7 +1,5 @@
 package com.example.app_rpg.ui
 
-import androidx.compose.runtime.LaunchedEffect
-import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +55,9 @@ import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.data.local.AtributoData
 import com.example.app_rpg.data.local.PericiasData
 import com.example.app_rpg.data.local.StatusData
-import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.data.local.CharacterSheet
+import com.example.app_rpg.viewmodel.FichaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 private fun <T> List<T>.replaceAt(index: Int, value: T) =
@@ -67,23 +66,36 @@ private fun <T> List<T>.replaceAt(index: Int, value: T) =
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-fun FichaPersonagemScreenPreview(){
-    FichaPersonagemScreen(Modifier, remember { MeuViewModel(Application()) })
+private fun FichaPersonagemContentPreview() {
+    FichaPersonagemContent(Modifier, CharacterSheet(), {}, {}, {})
 }
 
 @Composable
 fun FichaPersonagemScreen(
     modifier: Modifier,
-    viewModel: MeuViewModel
+    viewModel: FichaViewModel
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    FichaPersonagemContent(
+        modifier = modifier,
+        draft = uiState.rascunho,
+        onDraftChange = viewModel::atualizarRascunho,
+        onCancel = viewModel::cancelarEdicao,
+        onSave = viewModel::salvarFicha
+    )
+}
+
+@Composable
+private fun FichaPersonagemContent(
+    modifier: Modifier,
+    draft: CharacterSheet,
+    onDraftChange: (CharacterSheet) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-
-    val draft = viewModel.characterDraft
-
-    LaunchedEffect(Unit) {
-        viewModel.carregarFicha()
-    }
 
     Column(
         modifier = modifier
@@ -97,41 +109,41 @@ fun FichaPersonagemScreen(
         HeaderSection(
             name = draft.name,
             level = draft.level,
-            onNameChange = { viewModel.atualizarRascunhoFicha(draft.copy(name = it)) },
-            onLevelChange = { viewModel.atualizarRascunhoFicha(draft.copy(level = it)) }
+            onNameChange = { onDraftChange(draft.copy(name = it)) },
+            onLevelChange = { onDraftChange(draft.copy(level = it)) }
         )
         ClasseRacaSection(
             characterClass = draft.characterClass,
             race = draft.race,
-            onClassChange = { viewModel.atualizarRascunhoFicha(draft.copy(characterClass = it)) },
-            onRaceChange = { viewModel.atualizarRascunhoFicha(draft.copy(race = it)) }
+            onClassChange = { onDraftChange(draft.copy(characterClass = it)) },
+            onRaceChange = { onDraftChange(draft.copy(race = it)) }
         )
         AtributosSection(
             attributes = draft.attributes,
             onChange = { index, attribute ->
-                viewModel.atualizarRascunhoFicha(draft.copy(attributes = draft.attributes.replaceAt(index, attribute)))
+                onDraftChange(draft.copy(attributes = draft.attributes.replaceAt(index, attribute)))
             }
         )
         StatusSection(
             status = draft.status,
             onChange = { index, status ->
-                viewModel.atualizarRascunhoFicha(draft.copy(status = draft.status.replaceAt(index, status)))
+                onDraftChange(draft.copy(status = draft.status.replaceAt(index, status)))
             }
         )
         PericiaSection(
             skills = draft.skills,
             onChange = { index, skill ->
-                viewModel.atualizarRascunhoFicha(draft.copy(skills = draft.skills.replaceAt(index, skill)))
+                onDraftChange(draft.copy(skills = draft.skills.replaceAt(index, skill)))
             }
         )
         BotoesAcaoSection(
             onCancel = {
                 focusManager.clearFocus()
-                viewModel.cancelarEdicaoFicha()
+                onCancel()
             },
             onSave = {
                 focusManager.clearFocus()
-                viewModel.salvarFicha()
+                onSave()
                 Toast.makeText(context, "Ficha salva com sucesso", Toast.LENGTH_SHORT).show()
             }
         )

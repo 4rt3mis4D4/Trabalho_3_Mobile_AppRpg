@@ -38,6 +38,9 @@ import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.R
 import com.example.app_rpg.AppRpgApplication
+import com.example.app_rpg.viewmodel.DiceViewModel
+import com.example.app_rpg.viewmodel.FichaViewModel
+import com.example.app_rpg.viewmodel.FichaViewModelFactory
 import com.example.app_rpg.viewmodel.MeuViewModel
 import com.example.app_rpg.viewmodel.MusicaViewModel
 import com.example.app_rpg.viewmodel.MusicaViewModelFactory
@@ -119,6 +122,10 @@ fun App() {
     val mode = user.mode
     val app = LocalContext.current.applicationContext as AppRpgApplication
     val viewModel: MeuViewModel = viewModel()
+    val diceViewModel: DiceViewModel = viewModel()
+    val fichaViewModel: FichaViewModel = viewModel(
+        factory = FichaViewModelFactory(app.fichaRepository)
+    )
     val musicaViewModel: MusicaViewModel = viewModel(
         factory = MusicaViewModelFactory(app.musicaRepository)
     )
@@ -226,11 +233,11 @@ fun App() {
                 navController = navController,
                 startDestination = Routes.DICE
             ) {
-                composable(Routes.DICE) { DiceScreen(contentModifier, viewModel) }
+                composable(Routes.DICE) { DiceScreen(contentModifier, diceViewModel) }
                 composable(Routes.CHARACTER_SHEET) {
                     FichaPersonagemScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel
+                        viewModel = fichaViewModel
                     )
                 }
                 composable(Routes.PLAYLIST) {
