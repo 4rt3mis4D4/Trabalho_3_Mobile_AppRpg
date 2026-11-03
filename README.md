@@ -7,6 +7,7 @@ Aplicativo Android desenvolvido com o objetivo de auxiliar e complementar sessõ
 > Este projeto está sendo desenvolvido de forma contínua ao longo do curso de **Ciência da Computação**, acompanhando a evolução dos conhecimentos adquiridos durante a disciplina Desenvolvimento Mobile. Novas funcionalidades, melhorias de interface, correções e ajustes serão adicionados conforme o desenvolvimento do projeto avançar.
 
 📄 Processo de desenvolvimento e decisões do trio:
+* **Trabalho 4 (Camadas):** [seção abaixo](#processo--trabalho-4-organização-em-camadas)
 * **Trabalho 3 (Room):** [seção abaixo](#processo--trabalho-3-persistência-com-room)
 * **Trabalho 2 (Navegação):** [PROCESSO.md](PROCESSO.md)
 
@@ -87,6 +88,8 @@ O projeto utiliza atualmente:
 * **Android Studio**;
 * **Jetpack Compose**;
 * **Material 3**;
+* **Room** (banco de dados local);
+* **ViewModel, StateFlow e Flow** (estado das telas e dados reativos);
 * **Gradle**;
 * **Git**;
 * **GitHub**.
@@ -106,7 +109,15 @@ app_rpg/
 │   └── src/
 │       └── main/
 │           ├── java/
-│           │   └── ...
+│           │   └── com/example/app_rpg/
+│           │       ├── MainActivity.kt
+│           │       ├── AppRpgApplication.kt
+│           │       ├── ui/              (telas e tema)
+│           │       ├── viewmodel/       (ViewModel, UiState e Factory)
+│           │       └── data/
+│           │           ├── local/       (Entity, DAO e Database)
+│           │           ├── dice/        (regras dos dados)
+│           │           └── repository/  (Repository)
 │           │
 │           └── res/
 │               ├── drawable/
@@ -354,6 +365,136 @@ Cada entidade tem o seu DAO (`ItemDao`, `LojaDao`, `FichaDao`, `MusicaDao`), tod
 - **Bruno:**
   - os diálogos da playlist fechavam ao girar o celular, e o texto se perdia. Resolveu trocando `remember` por `rememberSaveable` e guardando só o id da música em edição.
   - depois, na migração para o Room, encontrou e corrigiu os dois problemas da seção 4: a ficha que não salvava edições e o formulário de item que não reiniciava.
+
+## Processo – Trabalho 4 (Organização em camadas)
+
+Esta seção conta como o **APP RPG** foi reorganizado em camadas: **Model, Repository, ViewModel e View**. Nenhuma tela, campo ou funcionalidade nova foi criada. O app faz o mesmo que fazia no Trabalho 3, só que com cada responsabilidade no seu lugar. Os prints estão em [`docs/prints/`](docs/prints/).
+
+> **A preencher (trio):** link do vídeo curto mostrando o app funcionando: `COLOCAR O LINK AQUI`
+
+### 1. Como estava o projeto no Trabalho 3, e o que mudou?
+
+| | Trabalho 3 | Trabalho 4 |
+|---|---|---|
+| **Pacotes** | Quase tudo no pacote raiz. As `@Entity` de loja, música e ficha estavam dentro dos arquivos das telas. | `ui`, `data.local`, `data.dice`, `data.repository` e `viewmodel`. |
+| **ViewModel** | Um único `MeuViewModel` de 291 linhas cuidava de todas as telas e abria o banco sozinho (`AndroidViewModel`). | Cinco ViewModels, um por área: `MusicaViewModel`, `FichaViewModel`, `ItemViewModel`, `LojaViewModel` e `DiceViewModel`. |
+| **Acesso ao banco** | O ViewModel chamava os DAOs direto. | Só os `Repository` falam com os DAOs, e só os ViewModels falam com os `Repository`. |
+| **Busca de dados** | `suspend fun buscarTodos(): List<...>`. Cada tela buscava num `LaunchedEffect(Unit)`, e cada escrita precisava recarregar a lista na mão. | `fun buscarTodos(): Flow<List<...>>`. O Room avisa sozinho quando a tabela muda. |
+| **Coroutines** | `CoroutineScope(Dispatchers.IO)` criado na mão, e `withContext(Dispatchers.Main)` para voltar. | `viewModelScope.launch { ... }`. As funções do Room já cuidam da thread. |
+| **Estado da tela** | Vários `mutableStateOf` soltos. As telas alteravam esses campos direto (`by viewModel::campo`), e a playlist guardava seu estado em `rememberSaveable`. | Uma `data class ...UiState` por ViewModel, com `_uiState` privado e `uiState` público só para leitura. |
+| **Regras** | Validação de formulário, filtro da playlist, cálculo dos dados e regras da ficha ficavam nas telas. | Ficam nos ViewModels e em `data.dice`. A tela só desenha e avisa o que o usuário fez. |
+
+O caminho de uma ação agora é sempre o mesmo:
+
+```text
+Tela (ui)  →  ViewModel  →  Repository  →  DAO  →  Room
+   ↑                                                 │
+   └── uiState (StateFlow)  ←  ViewModel  ←  Flow  ←─┘
+```
+
+| Dados | Ficha | Música | Itens |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/prints/t4-dados.png" width="180"> | <img src="docs/prints/t4-ficha.png" width="180"> | <img src="docs/prints/t4-musica.png" width="180"> | <img src="docs/prints/t4-itens.png" width="180"> |
+
+### 2. O que foi para cada pacote?
+
+> **A preencher (trio):** como vocês decidiram essa divisão entre si. O critério técnico está abaixo.
+
+O critério foi: cada arquivo fica no pacote da única responsabilidade que ele tem.
+
+| Pacote | Camada | O que tem | Por quê |
+|---|---|---|---|
+| `ui` | View | As telas, `AppTopBar` e `App()` (com `Routes`, `Destination` e `Mode`), além de `User` e do tema em `ui.theme` | Só desenham o `uiState` e avisam o ViewModel. Navegação e modo Jogador/Mestre são assuntos da interface. |
+| `data.local` | Model | `ItemRpg`, `LojaRpg`, `CharacterSheet`, `Musica`, os 4 DAOs, `AppDatabase` e `Converters` | Tudo o que conhece o Room. As entidades saíram dos arquivos das telas. |
+| `data.dice` | Model | `DiceExpression`, `DiceStats`, `Outcome` e o cálculo da distribuição | É regra de negócio, mas não vem do banco, então não faz sentido ter DAO. Esse pacote é um a mais que o mínimo pedido. |
+| `data.repository` | Repository | `ItemRepository`, `LojaRepository`, `FichaRepository` e `MusicaRepository` | Um por entidade. É a única porta de entrada para os dados. |
+| `viewmodel` | ViewModel | Os 5 ViewModels, seus `UiState`, as 4 `Factory` e `tratadorDeErro` | Guardam o estado das telas e as regras de cada ação. |
+
+Fora deles ficam dois arquivos: `MainActivity`, que continua no pacote raiz para o manifesto não mudar, e `AppRpgApplication`, que cria o banco e os repositórios uma única vez.
+
+**Onde os ViewModels são criados:** todos em `App()`, com `viewModel(factory = ItemViewModelFactory(app.itemRepository))`. Se cada tela criasse o seu dentro do `composable(...)`, ele morreria junto com a tela. Ao salvar um item e chamar `popBackStack()`, o `viewModelScope` seria cancelado, e o salvamento poderia se perder. O `DiceViewModel` não recebe nada no construtor, então usa o `viewModel()` simples e não precisa de `Factory`.
+
+### 3. Por que o Repository existe?
+
+Antes, quem usava os dados precisava saber de onde eles vinham. O ViewModel conhecia DAOs, transações e até o `Context` para abrir o banco. O `Repository` resolve isso em três pontos:
+
+- **Uma única porta para os dados:** se um dia os dados vierem de uma API, só o `Repository` muda. ViewModel e tela continuam iguais.
+- **ViewModel mais simples:** ele recebe o `Repository` no construtor e não precisa mais de `Context`, por isso voltou a ser um `ViewModel()` comum.
+- **Um lugar certo para regras de dados:** excluir um item também precisa tirá-lo de todas as lojas, e as duas coisas têm que acontecer juntas. Isso agora fica no `ItemRepository`, e o `ItemViewModel` só chama `deletar(item)`:
+
+```kotlin
+suspend fun deletar(item: ItemRpg) {
+    banco.withTransaction {
+        itemDao.deletar(item)
+        lojaDao.listarTodas()
+            .filter { item.id in it.itemIds }
+            .forEach { lojaDao.atualizar(it.copy(itemIds = it.itemIds - item.id)) }
+    }
+}
+```
+
+Os outros métodos só repassam para o DAO, como `suspend fun inserir(item: ItemRpg): Long = itemDao.inserir(item)`.
+
+**Por que existe `listarTodas()` além de `buscarTodos()`:** a transação precisa de uma leitura única, e um `Flow` foi feito para ficar observando. Por isso o `LojaDao` ganhou uma consulta `suspend` só para esse caso.
+
+### 4. O que tem dentro do `UiState` de cada tela, e por quê?
+
+A regra usada foi: entra no `UiState` tudo o que a tela precisa para se desenhar e que deve sobreviver à rotação. O que dá para calcular a partir desses campos virou propriedade calculada, para não existirem duas versões da mesma informação. A posição de rolagem continua na tela, porque é só detalhe visual.
+
+| UiState | Campos | Por que esses campos |
+|---|---|---|
+| `MusicaUiState` | `musicas`, `carregando`, `pesquisa`, `generoSelecionado`, `formularioAberto`, `musicaEmEdicaoId`, `formTitulo`, `formArtista`, `formGenero`, `musicaParaExcluirId`, `musicaAtualId`, `estaTocando` | Substituem os `rememberSaveable` soltos da playlist. Guardamos só o **id** da música em edição, em exclusão e tocando, e buscamos ela na lista, para nunca mostrar uma cópia antiga. `musicasFiltradas` é calculada. |
+| `FichaUiState` | `ficha`, `rascunho`, `carregando` | `ficha` é o que está salvo e `rascunho` é o que está sendo digitado. O "Cancelar" só copia um para o outro. |
+| `ItemUiState` | `itens`, `carregando`, `itemParaExcluir`, `emEdicaoId`, `nome`, `valor`, `descricao`, `categoria`, `tentouSalvar` | A lista e o formulário usam os mesmos dados. `tentouSalvar` faz os erros aparecerem só depois da primeira tentativa, e `nomeInvalido` e `valorInvalido` são calculados a partir dele. |
+| `LojaUiState` | `lojas`, `itensDisponiveis`, `carregando`, `lojaParaExcluir`, `lojaAtualId`, `emEdicaoId`, `nome`, `descricao`, `visivel`, `itemIds`, `imagemUri`, `erroNome` | `lojaAtual` e `itensDaLojaAtual` são calculados a partir de `lojas` e `itensDisponiveis`. Assim o detalhe da loja acompanha sozinho qualquer mudança nas duas tabelas. |
+| `DiceUiState` | `expressao`, `stats`, `erro` | Tudo o que a tela de dados mostra. A expressão virou `String` porque o `TextFieldState` usado antes é uma classe do Compose. |
+
+**`carregando`** evita mostrar "Nenhum item cadastrado" antes de o banco responder pela primeira vez.
+
+**O resultado do `Flow` na prática:** a tela remove o item e não pede nenhuma recarga. O Room avisa, o `uiState` muda, e a lista e o contador da barra superior se atualizam sozinhos.
+
+| Loja com 3 itens | Removeu "Corda": atualizou sozinha | Excluiu "Escudo" na aba Itens | Reaberto: continua igual |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/prints/t4-loja-1-antes.png" width="180"> | <img src="docs/prints/t4-loja-2-removido.png" width="180"> | <img src="docs/prints/t4-loja-3-cascata.png" width="180"> | <img src="docs/prints/t4-persist-reaberto.png" width="180"> |
+
+### 5. Alguma funcionalidade quebrou? Como encontraram e corrigiram?
+
+No teste final, feito no emulador, **nenhuma funcionalidade do Trabalho 3 quebrou**. A identidade do esquema do Room (`identity_hash`) continuou igual depois da reorganização, e os dados já salvos continuaram lá. Migramos uma área por vez (Música, depois Dados e Ficha, e por último Itens e Lojas), compilando e fazendo um commit a cada etapa.
+
+Alguns pontos exigiram cuidado por causa da mudança:
+
+- **O `Flow` podia apagar o que estava sendo digitado na ficha:** todo valor novo do banco substituiria o rascunho. Agora o rascunho só é substituído quando não tem alterações pendentes.
+- **Salvar a ficha duas vezes não pode criar outra ficha:** o `FichaViewModel` guarda o id devolvido pelo `inserir`, então o segundo salvamento vira um `atualizar`.
+- **O formulário de loja podia abrir em branco:** ele procurava a loja numa lista que podia ainda estar vazia, e salvar nesse estado criaria uma loja duplicada. Agora ele busca a loja pelo id, como o formulário de item.
+- **Detalhe da loja:** ele era carregado uma vez e recarregado na mão. Se fosse só trocado por `Flow`, deixaria de acompanhar as mudanças, então passou a ser calculado a partir das duas listas observadas.
+- **Regras da ficha:** na primeira passada, as regras de cada campo (só dígitos, limite de tamanho, ciclo de proficiência) continuaram na tela. Uma conferência contra os requisitos encontrou isso, e elas foram para o `FichaViewModel`.
+- **Dado de teste inválido:** ao preparar os prints, inserimos direto no banco uma ficha com a lista de perícias vazia, e a tela da ficha fechou o app. O app sempre cria a ficha com perícias, então isso não acontece no uso normal.
+
+**O que foi testado:**
+
+| Área | Teste | Resultado |
+|---|---|---|
+| Atualização | Instalar por cima de um app com dados salvos | ✅ Dados mantidos |
+| Itens | Validação, criar, editar, excluir com confirmação | ✅ |
+| Lojas | Validação, criar, editar sem duplicar, cancelar, excluir, visibilidade | ✅ |
+| Detalhe da loja | Remover item atualiza a lista e o contador sem recarregar | ✅ |
+| Excluir item | Some também das lojas que o vendiam | ✅ |
+| Modos | Jogador não vê loja oculta nem edita; compra funciona | ✅ |
+| Música | Adicionar, editar, excluir, pesquisar, filtrar, tocar | ✅ |
+| Ficha | Salvar duas vezes na mesma ficha, cancelar, regras dos campos | ✅ |
+| Dados | Expressão válida e inválida | ✅ |
+| Rotação | Formulários e diálogos mantêm o que foi digitado | ✅ |
+| Persistência | Forçar o fechamento do app e reabrir | ✅ |
+
+| Formulário depois de girar: o texto continua lá |
+|:---:|
+| <img src="docs/prints/t4-rotacao-form.png" width="420"> |
+
+> **A preencher (trio):** confirmem esta seção com o teste de vocês e acrescentem o que encontrarem. Falta testar a escolha de uma imagem de verdade na loja.
+
+### 6. Algum integrante teve dificuldade? Como resolveram?
+
+> **A preencher (trio):** quem fez o quê nesta etapa e as dificuldades reais de cada integrante (Bruno, Gabriela e Michelle), com as próprias palavras.
 
 ## Autores
 
