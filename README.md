@@ -398,7 +398,7 @@ Tela (ui)  →  ViewModel  →  Repository  →  DAO  →  Room
 
 ### 2. O que foi para cada pacote?
 
-> **A preencher (trio):** como vocês decidiram essa divisão entre si. O critério técnico está abaixo.
+Partimos dos quatro pacotes pedidos no enunciado e movemos os arquivos antes de migrar qualquer tela, porque todas as outras etapas dependiam dessa estrutura. Os pacotes `data.repository` e `viewmodel` foram ganhando seus arquivos conforme cada área era migrada.
 
 O critério foi: cada arquivo fica no pacote da única responsabilidade que ele tem.
 
@@ -490,11 +490,23 @@ Alguns pontos exigiram cuidado por causa da mudança:
 |:---:|
 | <img src="docs/prints/t4-rotacao-form.png" width="420"> |
 
-> **A preencher (trio):** confirmem esta seção com o teste de vocês e acrescentem o que encontrarem. Falta testar a escolha de uma imagem de verdade na loja.
+> **A preencher (trio):** testar a escolha de uma imagem de verdade na loja e registrar o resultado na tabela acima.
 
 ### 6. Algum integrante teve dificuldade? Como resolveram?
 
-> **A preencher (trio):** quem fez o quê nesta etapa e as dificuldades reais de cada integrante (Bruno, Gabriela e Michelle), com as próprias palavras.
+A maior dificuldade foi a mesma para **Bruno, Gabriela e Michelle**: dividir o trabalho sem deixar ninguém com tarefa demais ou de menos.
+
+Isso não era simples porque as partes da reorganização têm tamanhos bem diferentes. O `DiceViewModel` tem 37 linhas, enquanto o `LojaViewModel` tem 180. Além disso, mover os arquivos para os pacotes precisava vir antes de todo o resto, então nem tudo podia ser feito ao mesmo tempo.
+
+Resolvemos dividindo o trabalho **por área do app**, e não por camada. Quem pegava uma área levava ela inteira, do `Repository` até a tela. Depois da base pronta, cada integrante continuava a partir do que já estava no repositório:
+
+| Integrante | O que fez nesta etapa | Linhas adicionadas |
+|---|---|---|
+| **Bruno** | A base: dependência `lifecycle-runtime-compose` e organização dos arquivos nos pacotes, separando as entidades dos arquivos das telas | 580 |
+| **Michelle** | Três áreas menores: Música, Dados e Ficha, incluindo levar as regras dos campos da ficha para o `FichaViewModel` | 557 |
+| **Gabriela** | Duas áreas maiores, Itens e Lojas, e a documentação do processo no README | 707 |
+
+As linhas vêm do histórico do Git e são só uma referência, porque boa parte das linhas do Bruno é código movido, e as da Gabriela incluem 142 de documentação. Elas mostram que a divisão ficou próxima, mas o esforço de cada parte não se mede só por esse número.
 
 ## Autores
 
