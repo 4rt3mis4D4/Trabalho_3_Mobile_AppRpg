@@ -41,7 +41,11 @@ import com.example.app_rpg.AppRpgApplication
 import com.example.app_rpg.viewmodel.DiceViewModel
 import com.example.app_rpg.viewmodel.FichaViewModel
 import com.example.app_rpg.viewmodel.FichaViewModelFactory
-import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.viewmodel.ItemViewModel
+import com.example.app_rpg.viewmodel.ItemViewModelFactory
+import com.example.app_rpg.viewmodel.LojaViewModel
+import com.example.app_rpg.viewmodel.LojaViewModelFactory
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.app_rpg.viewmodel.MusicaViewModel
 import com.example.app_rpg.viewmodel.MusicaViewModelFactory
 import androidx.compose.ui.platform.LocalContext
@@ -121,7 +125,6 @@ fun App() {
     var user by rememberSaveable { mutableStateOf(User()) }
     val mode = user.mode
     val app = LocalContext.current.applicationContext as AppRpgApplication
-    val viewModel: MeuViewModel = viewModel()
     val diceViewModel: DiceViewModel = viewModel()
     val fichaViewModel: FichaViewModel = viewModel(
         factory = FichaViewModelFactory(app.fichaRepository)
@@ -129,11 +132,17 @@ fun App() {
     val musicaViewModel: MusicaViewModel = viewModel(
         factory = MusicaViewModelFactory(app.musicaRepository)
     )
-    val lojas = viewModel.lojas
+    val itemViewModel: ItemViewModel = viewModel(
+        factory = ItemViewModelFactory(app.itemRepository)
+    )
+    val lojaViewModel: LojaViewModel = viewModel(
+        factory = LojaViewModelFactory(app.lojaRepository, app.itemRepository)
+    )
+    val lojaUiState by lojaViewModel.uiState.collectAsStateWithLifecycle()
 
     val routeStoreId = backStackEntry?.arguments?.getInt(Routes.STORE_ID_ARG, -1) ?: -1
-    val routeStore = viewModel.lojaAtual?.takeIf { it.id == routeStoreId }
-    val storeItemCount = if (routeStore != null) viewModel.itensDaLojaAtual.size else 0
+    val routeStore = lojaUiState.lojaAtual?.takeIf { it.id == routeStoreId }
+    val storeItemCount = if (routeStore != null) lojaUiState.itensDaLojaAtual.size else 0
     val routeItemId = backStackEntry?.arguments?.getInt(Routes.ITEM_ID_ARG, -1) ?: -1
     val tab = Destination.entries.firstOrNull { it.route == currentRoute }
 
@@ -247,7 +256,7 @@ fun App() {
                 composable(Routes.ITEMS) {
                     ItemListScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel,
+                        viewModel = itemViewModel,
                         onItemClick = { item ->
                             navController.navigate(Routes.itemRegistration(item.id))
                         },
@@ -273,20 +282,17 @@ fun App() {
 
                     ItemRegistrationScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel,
+                        viewModel = itemViewModel,
                         formKey = entry.id,
                         itemId = itemId,
-                        onSave = { item ->
-                            viewModel.salvarItem(item)
-                            navController.popBackStack()
-                        }
+                        onSalvo = { navController.popBackStack() }
                     )
                 }
 
                 composable(Routes.STORE_LIST) {
                     StoreListScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel,
+                        viewModel = lojaViewModel,
                         isMaster = mode == Mode.Master,
                         onLojaClick = { loja ->
                             navController.navigate(Routes.store(loja.id))
@@ -306,7 +312,7 @@ fun App() {
                 ) { entry ->
                     StoreScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel,
+                        viewModel = lojaViewModel,
                         lojaId = entry.arguments?.getInt(Routes.STORE_ID_ARG),
                         isMaster = mode == Mode.Master,
                         onItemClick = { item ->
@@ -326,19 +332,15 @@ fun App() {
                         }
                     )
                 ) { entry ->
-                    val storeId = entry.arguments?.getInt(Routes.STORE_ID_ARG)
-                    val editingStore = lojas.firstOrNull { it.id == storeId }
+                    val storeId = entry.arguments?.getInt(Routes.STORE_ID_ARG)?.takeIf { it != -1 }
 
                     StoreRegistrationScreen(
                         modifier = contentModifier,
-                        viewModel = viewModel,
+                        viewModel = lojaViewModel,
                         formKey = entry.id,
-                        lojaInicial = editingStore,
+                        lojaId = storeId,
                         onCancelar = { navController.popBackStack() },
-                        onSalvar = { loja ->
-                            viewModel.salvarLoja(loja)
-                            navController.popBackStack()
-                        }
+                        onSalvo = { navController.popBackStack() }
                     )
                 }
             }

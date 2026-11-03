@@ -1,7 +1,5 @@
 package com.example.app_rpg.ui
 
-import androidx.compose.runtime.LaunchedEffect
-import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -30,10 +28,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,32 +51,55 @@ import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.R
 import com.example.app_rpg.data.local.ItemRpg
 import com.example.app_rpg.data.local.listCatItem
-import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.viewmodel.ItemUiState
+import com.example.app_rpg.viewmodel.ItemViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 
 @Composable
 fun ItemListScreen(
     modifier: Modifier = Modifier,
-    viewModel: MeuViewModel,
-    items: List<ItemRpg> = viewModel.itens,
+    viewModel: ItemViewModel,
     onItemClick: (ItemRpg) -> Unit = {},
     onAdd: () -> Unit = {},
     onEdit: (ItemRpg) -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ItemListContent(
+        modifier = modifier,
+        uiState = uiState,
+        onItemClick = onItemClick,
+        onAdd = onAdd,
+        onEdit = onEdit,
+        onPedirExclusao = viewModel::pedirExclusao,
+        onCancelarExclusao = viewModel::cancelarExclusao,
+        onExcluir = viewModel::excluirItem
+    )
+}
+
+@Composable
+private fun ItemListContent(
+    modifier: Modifier = Modifier,
+    uiState: ItemUiState,
+    onItemClick: (ItemRpg) -> Unit = {},
+    onAdd: () -> Unit = {},
+    onEdit: (ItemRpg) -> Unit = {},
+    onPedirExclusao: (ItemRpg) -> Unit = {},
+    onCancelarExclusao: () -> Unit = {},
+    onExcluir: (ItemRpg) -> Unit = {}
+) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
-
-    var itemToDelete by viewModel::itemParaExcluir
-
-    LaunchedEffect(Unit) {
-        viewModel.carregarItens()
-    }
+    val items = uiState.itens
+    val itemToDelete = uiState.itemParaExcluir
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(corPretoPuro)
     ) {
-        if (items.isEmpty()) {
+        if (!uiState.carregando && items.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -112,7 +129,7 @@ fun ItemListScreen(
                         item = item,
                         onClick = { onItemClick(item) },
                         onEdit = { onEdit(item) },
-                        onDelete = { itemToDelete = item }
+                        onDelete = { onPedirExclusao(item) }
                     )
                 }
             }
@@ -136,7 +153,7 @@ fun ItemListScreen(
 
     itemToDelete?.let { item ->
         AlertDialog(
-            onDismissRequest = { itemToDelete = null },
+            onDismissRequest = { onCancelarExclusao() },
             containerColor = corCinzaEscuro,
             titleContentColor = corBrancoPuro,
             textContentColor = corBrancoOffWhite,
@@ -145,20 +162,19 @@ fun ItemListScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.excluirItem(item)
+                        onExcluir(item)
                         Toast.makeText(
                             context,
                             "Item ${item.itemName} excluído",
                             Toast.LENGTH_SHORT
                         ).show()
-                        itemToDelete = null
                     }
                 ) {
                     Text("EXCLUIR", color = palette.accent, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
+                TextButton(onClick = { onCancelarExclusao() }) {
                     Text("CANCELAR", color = corCinzaMedio, fontWeight = FontWeight.Bold)
                 }
             }
@@ -301,7 +317,7 @@ private fun ItemListScreenPreview() {
 
     App_rpgTheme {
         CompositionLocalProvider(LocalModePalette provides MasterPalette) {
-            ItemListScreen(viewModel = remember { MeuViewModel(Application()) }, items = items)
+            ItemListContent(uiState = ItemUiState(itens = items, carregando = false))
         }
     }
 }

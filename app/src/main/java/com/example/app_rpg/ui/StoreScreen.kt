@@ -42,27 +42,31 @@ import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
 import com.example.app_rpg.R
 import com.example.app_rpg.data.local.ItemRpg
-import com.example.app_rpg.viewmodel.MeuViewModel
+import com.example.app_rpg.viewmodel.LojaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 
 private const val MESSAGE_BUY = "Compra efetuada com sucesso!"
 
 @Composable
 fun StoreScreen(
     modifier: Modifier = Modifier,
-    viewModel: MeuViewModel,
+    viewModel: LojaViewModel,
     lojaId: Int?,
     isMaster: Boolean = false,
     onItemClick: (ItemRpg) -> Unit = {}
 ) {
     val context = LocalContext.current
 
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(lojaId) {
-        if (lojaId != null) viewModel.carregarLoja(lojaId)
+        if (lojaId != null) viewModel.selecionarLoja(lojaId)
     }
 
-    val loja = viewModel.lojaAtual?.takeIf { it.id == lojaId }
+    val loja = uiState.lojaAtual?.takeIf { it.id == lojaId }
     val descricao = loja?.descricao.orEmpty()
-    val itens = if (loja != null) viewModel.itensDaLojaAtual else emptyList()
+    val itens = if (loja != null) uiState.itensDaLojaAtual else emptyList()
 
     Box(
         modifier = modifier
