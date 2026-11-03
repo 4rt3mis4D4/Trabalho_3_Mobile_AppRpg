@@ -17,6 +17,9 @@ data class FichaUiState(
     val carregando: Boolean = true
 )
 
+private fun <T> List<T>.replaceAt(index: Int, value: T) =
+    toMutableList().also { it[index] = value }
+
 class FichaViewModel(private val repository: FichaRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FichaUiState())
@@ -39,8 +42,43 @@ class FichaViewModel(private val repository: FichaRepository) : ViewModel() {
         }
     }
 
-    fun atualizarRascunho(novo: CharacterSheet) {
-        _uiState.update { it.copy(rascunho = novo) }
+    private fun atualizarRascunho(alterar: (CharacterSheet) -> CharacterSheet) {
+        _uiState.update { it.copy(rascunho = alterar(it.rascunho)) }
+    }
+
+    fun atualizarNome(nome: String) = atualizarRascunho { it.copy(name = nome) }
+
+    fun atualizarLevel(level: String) = atualizarRascunho {
+        it.copy(level = level.filter(Char::isDigit).take(2))
+    }
+
+    fun atualizarClasse(classe: String) = atualizarRascunho { it.copy(characterClass = classe) }
+
+    fun atualizarRaca(raca: String) = atualizarRascunho { it.copy(race = raca) }
+
+    fun atualizarAtributo(index: Int, valor: String) = atualizarRascunho { ficha ->
+        val atributo = ficha.attributes[index].copy(valor = valor.filter(Char::isDigit).take(2))
+        ficha.copy(attributes = ficha.attributes.replaceAt(index, atributo))
+    }
+
+    fun atualizarStatus(index: Int, valor: String) = atualizarRascunho { ficha ->
+        val status = ficha.status[index].copy(valor = valor.take(4))
+        ficha.copy(status = ficha.status.replaceAt(index, status))
+    }
+
+    fun alternarProficiencia(index: Int) = atualizarRascunho { ficha ->
+        val pericia = ficha.skills[index]
+        val alterada = pericia.copy(proficiencia = (pericia.proficiencia + 1) % 3)
+        ficha.copy(skills = ficha.skills.replaceAt(index, alterada))
+    }
+
+    fun atualizarBonusPericia(index: Int, bonus: String) = atualizarRascunho { ficha ->
+        val valido = bonus.filterIndexed { i, c -> c.isDigit() || (i == 0 && c == '-') }.take(3)
+        ficha.copy(skills = ficha.skills.replaceAt(index, ficha.skills[index].copy(bonus = valido)))
+    }
+
+    fun atualizarNomePericia(index: Int, nome: String) = atualizarRascunho { ficha ->
+        ficha.copy(skills = ficha.skills.replaceAt(index, ficha.skills[index].copy(nome = nome)))
     }
 
     fun cancelarEdicao() {

@@ -58,14 +58,10 @@ import com.example.app_rpg.viewmodel.FichaViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
-private fun <T> List<T>.replaceAt(index: Int, value: T) =
-    toMutableList().also { it[index] = value }
-
-
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun FichaPersonagemContentPreview() {
-    FichaPersonagemContent(Modifier, CharacterSheet(), {}, {}, {})
+    FichaPersonagemContent(Modifier, CharacterSheet())
 }
 
 @Composable
@@ -78,7 +74,15 @@ fun FichaPersonagemScreen(
     FichaPersonagemContent(
         modifier = modifier,
         draft = uiState.rascunho,
-        onDraftChange = viewModel::atualizarRascunho,
+        onNameChange = viewModel::atualizarNome,
+        onLevelChange = viewModel::atualizarLevel,
+        onClassChange = viewModel::atualizarClasse,
+        onRaceChange = viewModel::atualizarRaca,
+        onAtributoChange = viewModel::atualizarAtributo,
+        onStatusChange = viewModel::atualizarStatus,
+        onProficienciaClick = viewModel::alternarProficiencia,
+        onBonusChange = viewModel::atualizarBonusPericia,
+        onNomePericiaChange = viewModel::atualizarNomePericia,
         onCancel = viewModel::cancelarEdicao,
         onSave = viewModel::salvarFicha
     )
@@ -88,9 +92,17 @@ fun FichaPersonagemScreen(
 private fun FichaPersonagemContent(
     modifier: Modifier,
     draft: CharacterSheet,
-    onDraftChange: (CharacterSheet) -> Unit,
-    onCancel: () -> Unit,
-    onSave: () -> Unit
+    onNameChange: (String) -> Unit = {},
+    onLevelChange: (String) -> Unit = {},
+    onClassChange: (String) -> Unit = {},
+    onRaceChange: (String) -> Unit = {},
+    onAtributoChange: (Int, String) -> Unit = { _, _ -> },
+    onStatusChange: (Int, String) -> Unit = { _, _ -> },
+    onProficienciaClick: (Int) -> Unit = {},
+    onBonusChange: (Int, String) -> Unit = { _, _ -> },
+    onNomePericiaChange: (Int, String) -> Unit = { _, _ -> },
+    onCancel: () -> Unit = {},
+    onSave: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -107,32 +119,28 @@ private fun FichaPersonagemContent(
         HeaderSection(
             name = draft.name,
             level = draft.level,
-            onNameChange = { onDraftChange(draft.copy(name = it)) },
-            onLevelChange = { onDraftChange(draft.copy(level = it)) }
+            onNameChange = onNameChange,
+            onLevelChange = onLevelChange
         )
         ClasseRacaSection(
             characterClass = draft.characterClass,
             race = draft.race,
-            onClassChange = { onDraftChange(draft.copy(characterClass = it)) },
-            onRaceChange = { onDraftChange(draft.copy(race = it)) }
+            onClassChange = onClassChange,
+            onRaceChange = onRaceChange
         )
         AtributosSection(
             attributes = draft.attributes,
-            onChange = { index, attribute ->
-                onDraftChange(draft.copy(attributes = draft.attributes.replaceAt(index, attribute)))
-            }
+            onChange = onAtributoChange
         )
         StatusSection(
             status = draft.status,
-            onChange = { index, status ->
-                onDraftChange(draft.copy(status = draft.status.replaceAt(index, status)))
-            }
+            onChange = onStatusChange
         )
         PericiaSection(
             skills = draft.skills,
-            onChange = { index, skill ->
-                onDraftChange(draft.copy(skills = draft.skills.replaceAt(index, skill)))
-            }
+            onProficienciaClick = onProficienciaClick,
+            onBonusChange = onBonusChange,
+            onNomeChange = onNomePericiaChange
         )
         BotoesAcaoSection(
             onCancel = {
@@ -169,7 +177,7 @@ fun HeaderSection(
         )
         CampoTexto(
             value = level,
-            onValueChange = { novo -> onLevelChange(novo.filter { it.isDigit() }.take(2)) },
+            onValueChange = onLevelChange,
             label = "Level",
             keyboardType = KeyboardType.Number,
             modifier = Modifier.weight(1f)
@@ -208,7 +216,7 @@ fun ClasseRacaSection(
 @Composable
 fun AtributosSection(
     attributes: List<AtributoData>,
-    onChange: (Int, AtributoData) -> Unit
+    onChange: (Int, String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         attributes.withIndex().chunked(3).forEach { linha ->
@@ -220,9 +228,7 @@ fun AtributosSection(
                     CirculoAtributo(
                         valor = atributo.valor,
                         label = atributo.label,
-                        onValueChange = { novo ->
-                            onChange(index, atributo.copy(valor = novo.filter { it.isDigit() }.take(2)))
-                        }
+                        onValueChange = { novo -> onChange(index, novo) }
                     )
                 }
             }
@@ -234,7 +240,7 @@ fun AtributosSection(
 @Composable
 fun StatusSection(
     status: List<StatusData>,
-    onChange: (Int, StatusData) -> Unit
+    onChange: (Int, String) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -244,7 +250,7 @@ fun StatusSection(
             CardStatus(
                 valor = item.valor,
                 label = item.label,
-                onValueChange = { onChange(index, item.copy(valor = it.take(4))) },
+                onValueChange = { novo -> onChange(index, novo) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -255,7 +261,9 @@ fun StatusSection(
 @Composable
 fun PericiaSection(
     skills: List<PericiasData>,
-    onChange: (Int, PericiasData) -> Unit
+    onProficienciaClick: (Int) -> Unit,
+    onBonusChange: (Int, String) -> Unit,
+    onNomeChange: (Int, String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -279,14 +287,9 @@ fun PericiaSection(
                             proficiencia = pericia.proficiencia,
                             bonus = pericia.bonus,
                             nome = pericia.nome,
-                            onProficienciaClick = {
-                                onChange(index, pericia.copy(proficiencia = (pericia.proficiencia + 1) % 3))
-                            },
-                            onBonusChange = { novo ->
-                                val bonus = novo.filterIndexed { i, c -> c.isDigit() || (i == 0 && c == '-') }
-                                onChange(index, pericia.copy(bonus = bonus.take(3)))
-                            },
-                            onNomeChange = { onChange(index, pericia.copy(nome = it)) }
+                            onProficienciaClick = { onProficienciaClick(index) },
+                            onBonusChange = { novo -> onBonusChange(index, novo) },
+                            onNomeChange = { novo -> onNomeChange(index, novo) }
                         )
                     }
                 }
