@@ -1,10 +1,7 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.runtime.LaunchedEffect
-import android.net.Uri
 import android.widget.Toast
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -38,10 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,50 +47,43 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
-
-@Entity(tableName = "lojas")
-data class LojaRpg(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val nome : String,
-    val descricao: String,
-    val imagemUri: Uri?,
-    val visivel: Boolean,
-    val itemIds: Set<Int> = emptySet()
-)
+import com.example.app_rpg.R
+import com.example.app_rpg.data.local.ItemRpg
+import com.example.app_rpg.viewmodel.LojaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 
 @Composable
 fun StoreRegistrationScreen(
     modifier: Modifier = Modifier,
-    viewModel: MeuViewModel,
+    viewModel: LojaViewModel,
     formKey: String,
-    lojaInicial: LojaRpg? = null,
+    lojaId: Int? = null,
     onCancelar: () -> Unit = {},
-    onSalvar: (LojaRpg) -> Unit = {}
+    onSalvo: () -> Unit = {}
 ) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
-    val items = viewModel.itens
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.carregarItens()
+    LaunchedEffect(formKey) {
+        viewModel.abrirFormulario(formKey, lojaId)
     }
 
-    remember(formKey) { viewModel.iniciarFormularioLoja(formKey, lojaInicial) }
-
-    var nome by viewModel::lojaNome
-    var descricao by viewModel::lojaDescricao
-    var visivel by viewModel::lojaVisivel
-    var itemIds by viewModel::lojaItemIds
-    var imagemUri by viewModel::lojaImagemUri
-    var errorName by viewModel::lojaErroNome
+    val items = uiState.itensDisponiveis
+    val nome = uiState.nome
+    val descricao = uiState.descricao
+    val visivel = uiState.visivel
+    val itemIds = uiState.itemIds
+    val imagemUri = uiState.imagemUri
+    val errorName = uiState.erroNome
 
     val selecionarImagem = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            imagemUri = uri
+            viewModel.atualizarImagem(uri)
         }
     }
 
@@ -112,13 +98,7 @@ fun StoreRegistrationScreen(
 
         OutlinedTextField(
             value = nome,
-            onValueChange = {
-                nome = it
-
-                if (it.isNotBlank()) {
-                    errorName = false
-                }
-            },
+            onValueChange = viewModel::atualizarNome,
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
@@ -190,9 +170,7 @@ fun StoreRegistrationScreen(
 
         OutlinedTextField(
             value = descricao,
-            onValueChange = {
-                descricao = it
-            },
+            onValueChange = viewModel::atualizarDescricao,
             placeholder = {
                 Text(
                     text = "Digite uma descrição para a loja...",
@@ -223,9 +201,7 @@ fun StoreRegistrationScreen(
         ) {
             Checkbox(
                 checked = visivel,
-                onCheckedChange = {
-                    visivel = it
-                },
+                onCheckedChange = viewModel::atualizarVisivel,
                 colors = CheckboxDefaults.colors(
                     checkedColor = palette.strong,
                     uncheckedColor = corCinzaMedio,
@@ -247,9 +223,7 @@ fun StoreRegistrationScreen(
         StoreItemsSelector(
             items = items,
             selectedIds = itemIds,
-            onToggle = { id ->
-                itemIds = if (id in itemIds) itemIds - id else itemIds + id
-            }
+            onToggle = viewModel::alternarItem
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -284,25 +258,14 @@ fun StoreRegistrationScreen(
 
             Button(
                 onClick = {
-                    if (nome.isBlank()) {
-                        errorName = true
-                    } else {
-                        val loja = LojaRpg(
-                            id = lojaInicial?.id ?: 0,
-                            nome = nome.trim(),
-                            descricao = descricao.trim(),
-                            imagemUri = imagemUri,
-                            visivel = visivel,
-                            itemIds = itemIds
-                        )
-
+                    if (viewModel.salvarLoja()) {
                         Toast.makeText(
                             context,
-                            "Loja ${loja.nome} salva!",
+                            "Loja ${nome.trim()} salva!",
                             Toast.LENGTH_SHORT
                         ).show()
 
-                        onSalvar(loja)
+                        onSalvo()
                     }
                 },
                 modifier = Modifier

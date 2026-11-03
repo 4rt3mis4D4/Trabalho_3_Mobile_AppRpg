@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,9 +27,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,38 +37,45 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.corBrancoOffWhite
 import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
+import com.example.app_rpg.data.dice.DiceStats
+import com.example.app_rpg.viewmodel.DiceUiState
+import com.example.app_rpg.viewmodel.DiceViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
-data class DiceStats(
-    val expression: DiceExpression,
-    val outcomes: List<Outcome>
-) {
-    val median: Int = outcomes.median()
-    val bars: List<Bar> = outcomes.map { outcome ->
-        Bar(
-            label = outcome.total.toString(),
-            value = (outcome.probability * 100).toFloat(),
-            highlighted = outcome.total == median
-        )
-    }
+private fun DiceStats.toBars(): List<Bar> = outcomes.map { outcome ->
+    Bar(
+        label = outcome.total.toString(),
+        value = (outcome.probability * 100).toFloat(),
+        highlighted = outcome.total == median
+    )
 }
 
 @Composable
-fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
-    val expressionState = viewModel.expressionState
+fun DiceScreen(modifier: Modifier = Modifier, viewModel: DiceViewModel) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var stats = viewModel.diceStats
-    var error = viewModel.diceError
+    DiceContent(
+        modifier = modifier,
+        uiState = uiState,
+        onExpressaoChange = viewModel::atualizarExpressao,
+        onSubmit = viewModel::calcular
+    )
+}
 
-    fun submit() = viewModel.calcularDados()
-
+@Composable
+private fun DiceContent(
+    modifier: Modifier = Modifier,
+    uiState: DiceUiState,
+    onExpressaoChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
     Column(
         modifier = modifier
             .background(corPretoPuro)
@@ -82,16 +84,17 @@ fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ExpressionSection(
-            state = expressionState,
-            error = error,
-            onSubmit = ::submit
+            expressao = uiState.expressao,
+            error = uiState.erro,
+            onExpressaoChange = onExpressaoChange,
+            onSubmit = onSubmit
         )
 
-        val currentStats = stats
+        val currentStats = uiState.stats
         DataSection(currentStats)
 
         if (currentStats != null) {
-            DistributionSection(currentStats.bars)
+            DistributionSection(remember(currentStats) { currentStats.toBars() })
         } else {
             Text(
                 text = "Digite uma expressão como 2d6 + 3 para ver a distribuição.",
@@ -105,8 +108,9 @@ fun DiceScreen(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
 
 @Composable
 private fun ExpressionSection(
-    state: TextFieldState,
+    expressao: String,
     error: String?,
+    onExpressaoChange: (String) -> Unit,
     onSubmit: () -> Unit
 ) {
     val palette = LocalModePalette.current
@@ -118,10 +122,11 @@ private fun ExpressionSection(
     ) {
         TextField(
             modifier = Modifier.weight(1f),
-            state = state,
+            value = expressao,
+            onValueChange = onExpressaoChange,
             label = { Text("Expressão") },
             placeholder = { Text("2d6 + 3") },
-            lineLimits = TextFieldLineLimits.SingleLine,
+            singleLine = true,
             isError = error != null,
             supportingText = error?.let { message -> { Text(message) } },
             shape = RoundedCornerShape(14.dp),
@@ -327,93 +332,8 @@ fun BarChart(
     }
 }
 
-data class DiceExpression(
-    val count: Int,
-    val sides: Int,
-    val modifier: Int = 0
-) {
-    val min: Int get() = count + modifier
-    val max: Int get() = count * sides + modifier
-    val mean: Double get() = count * (sides + 1) / 2.0 + modifier
-
-    override fun toString(): String = buildString {
-        append(count).append('d').append(sides)
-        when {
-            modifier > 0 -> append(" + ").append(modifier)
-            modifier < 0 -> append(" - ").append(-modifier)
-        }
-    }
-}
-
-data class Outcome(val total: Int, val probability: Double)
-
-private val DICE_REGEX = Regex("""^\s*(\d+)?\s*[dD]\s*(\d+)\s*(?:([+-])\s*(\d+)\s*)?$""")
-
-private const val MAX_DICE = 100
-private const val MAX_SIDES = 1000
-
-fun parseDiceExpression(input: String): Result<DiceExpression> {
-    val match = DICE_REGEX.matchEntire(input)
-        ?: return fail("Expressão inválida. Use algo como \"2d6 + 3\".")
-
-    val (countText, sidesText, sign, constantText) = match.destructured
-
-    val count = countText.ifEmpty { "1" }.toIntOrNull()
-        ?: return fail("Quantidade de dados grande demais.")
-
-    val sides = sidesText.toIntOrNull()
-        ?: return fail("Número de faces grande demais.")
-
-    if (count !in 1..MAX_DICE) return fail("A quantidade de dados deve estar entre 1 e $MAX_DICE.")
-    if (sides !in 2..MAX_SIDES) return fail("O dado deve ter entre 2 e $MAX_SIDES faces.")
-
-    val modifier = if (constantText.isEmpty()) 0 else {
-        val magnitude = constantText.toIntOrNull() ?: return fail("Modificador grande demais.")
-        if (sign == "-") -magnitude else magnitude
-    }
-
-    return Result.success(DiceExpression(count, sides, modifier))
-}
-
-private fun fail(message: String): Result<DiceExpression> =
-    Result.failure(IllegalArgumentException(message))
-
-fun DiceExpression.distribution(): List<Outcome> {
-    val p = 1.0 / sides
-    var probs = doubleArrayOf(1.0)
-
-    repeat(count) {
-        val next = DoubleArray(probs.size + sides)
-        for (i in probs.indices) {
-            val carried = probs[i]
-            if (carried == 0.0) continue
-            for (face in 1..sides) {
-                next[i + face] += carried * p
-            }
-        }
-        probs = next
-    }
-
-    return (count..count * sides).map { raw ->
-        Outcome(total = raw + modifier, probability = probs[raw])
-    }
-}
-
-private const val EPSILON = 1e-9
-
-fun List<Outcome>.median(): Int {
-    require(isNotEmpty()) { "Cannot take the median of an empty distribution." }
-
-    var cumulative = 0.0
-    for (outcome in this) {
-        cumulative += outcome.probability
-        if (cumulative >= 0.5 - EPSILON) return outcome.total
-    }
-    return last().total
-}
-
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun DiceScreenPreview() {
-    DiceScreen(Modifier.fillMaxSize(), viewModel())
+    DiceContent(Modifier.fillMaxSize(), DiceUiState(), {}, {})
 }

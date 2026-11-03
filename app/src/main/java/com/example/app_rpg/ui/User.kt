@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import java.io.Serializable
 

@@ -1,7 +1,5 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
-import androidx.compose.runtime.LaunchedEffect
-import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -31,10 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,27 +47,56 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
+import com.example.app_rpg.R
+import com.example.app_rpg.data.local.LojaRpg
+import com.example.app_rpg.viewmodel.LojaUiState
+import com.example.app_rpg.viewmodel.LojaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 
 @Composable
 fun StoreListScreen(
     modifier: Modifier = Modifier,
-    viewModel: MeuViewModel,
-    lojas: List<LojaRpg> = viewModel.lojas,
+    viewModel: LojaViewModel,
     isMaster: Boolean = true,
     onLojaClick: (LojaRpg) -> Unit = {},
     onAdicionar: () -> Unit = {},
     onEditar: (LojaRpg) -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    StoreListContent(
+        modifier = modifier,
+        uiState = uiState,
+        isMaster = isMaster,
+        onLojaClick = onLojaClick,
+        onAdicionar = onAdicionar,
+        onEditar = onEditar,
+        onPedirExclusao = viewModel::pedirExclusao,
+        onCancelarExclusao = viewModel::cancelarExclusao,
+        onExcluir = viewModel::excluirLoja,
+        onAlternarVisibilidade = viewModel::alternarVisibilidade
+    )
+}
+
+@Composable
+private fun StoreListContent(
+    modifier: Modifier = Modifier,
+    uiState: LojaUiState,
+    isMaster: Boolean = true,
+    onLojaClick: (LojaRpg) -> Unit = {},
+    onAdicionar: () -> Unit = {},
+    onEditar: (LojaRpg) -> Unit = {},
+    onPedirExclusao: (LojaRpg) -> Unit = {},
+    onCancelarExclusao: () -> Unit = {},
+    onExcluir: (LojaRpg) -> Unit = {},
+    onAlternarVisibilidade: (LojaRpg) -> Unit = {}
+) {
     val palette = LocalModePalette.current
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        viewModel.carregarLojas()
-    }
-
-    val displayedStores = if (isMaster) lojas else lojas.filter { it.visivel }
-
-    var lojaParaExcluir by viewModel::lojaParaExcluir
+    val displayedStores = uiState.lojasExibidas(isMaster)
+    val lojaParaExcluir = uiState.lojaParaExcluir
 
     val estadoScroll = rememberLazyListState()
 
@@ -82,7 +105,7 @@ fun StoreListScreen(
             .fillMaxSize()
             .background(corPretoPuro)
     ) {
-        if (displayedStores.isEmpty()) {
+        if (!uiState.carregando && displayedStores.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -118,8 +141,8 @@ fun StoreListScreen(
                         isMaster = isMaster,
                         onClick = { onLojaClick(loja) },
                         onEditar = { onEditar(loja) },
-                        onExcluir = { lojaParaExcluir = loja },
-                        onToggleVisibility = { viewModel.alternarVisibilidadeLoja(loja) }
+                        onExcluir = { onPedirExclusao(loja) },
+                        onToggleVisibility = { onAlternarVisibilidade(loja) }
                     )
                 }
             }
@@ -145,7 +168,7 @@ fun StoreListScreen(
 
     lojaParaExcluir?.let { loja ->
         AlertDialog(
-            onDismissRequest = { lojaParaExcluir = null },
+            onDismissRequest = { onCancelarExclusao() },
             containerColor = corCinzaEscuro,
             titleContentColor = corBrancoPuro,
             textContentColor = corBrancoOffWhite,
@@ -154,20 +177,19 @@ fun StoreListScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.excluirLoja(loja)
+                        onExcluir(loja)
                         Toast.makeText(
                             context,
                             "Loja ${loja.nome} excluída",
                             Toast.LENGTH_SHORT
                         ).show()
-                        lojaParaExcluir = null
                     }
                 ) {
                     Text("EXCLUIR", color = palette.accent, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { lojaParaExcluir = null }) {
+                TextButton(onClick = { onCancelarExclusao() }) {
                     Text("CANCELAR", color = corCinzaMedio, fontWeight = FontWeight.Bold)
                 }
             }
@@ -319,6 +341,6 @@ private fun StoreListScreenPreview() {
     )
 
     App_rpgTheme {
-        StoreListScreen(viewModel = remember { MeuViewModel(Application()) }, lojas = lojas)
+        StoreListContent(uiState = LojaUiState(lojas = lojas, carregando = false))
     }
 }

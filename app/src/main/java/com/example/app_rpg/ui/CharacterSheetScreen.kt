@@ -1,7 +1,5 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
-import androidx.compose.runtime.LaunchedEffect
-import android.app.Application
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,9 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,78 +50,62 @@ import com.example.app_rpg.ui.theme.corBrancoPuro
 import com.example.app_rpg.ui.theme.corCinzaEscuro
 import com.example.app_rpg.ui.theme.corCinzaMedio
 import com.example.app_rpg.ui.theme.corPretoPuro
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-
-data class AtributoData(val valor: String, val label: String)
-data class StatusData(val valor: String, val label: String)
-data class PericiasData(val proficiencia: Int, val bonus: String, val nome: String)
-
-@Entity(tableName = "fichas")
-data class CharacterSheet(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val name: String = "",
-    val level: String = "",
-    val characterClass: String = "",
-    val race: String = "",
-    val attributes: List<AtributoData> = atributosMock,
-    val status: List<StatusData> = statusMock,
-    val skills: List<PericiasData> = periciaMock
-)
-
-val atributosMock = listOf(
-    AtributoData("1", "For"),
-    AtributoData("1", "Des"),
-    AtributoData("1", "Con"),
-    AtributoData("1", "Int"),
-    AtributoData("1", "Sab"),
-    AtributoData("1", "Car")
-)
-
-val statusMock = listOf(
-    StatusData("56", "HP"),
-    StatusData("23", "Armad"),
-    StatusData("17", "Iniciat"),
-    StatusData("9m", "Desloc")
-)
-
-val periciaMock = listOf(
-    PericiasData(proficiencia = 2, bonus = "2", nome = "Perícia X"),
-    PericiasData(proficiencia = 0, bonus = "0", nome = "Perícia Y"),
-    PericiasData(proficiencia = 1, bonus = "4", nome = "Perícia Z"),
-    PericiasData(proficiencia = 2, bonus = "2", nome = "Perícia A"),
-    PericiasData(proficiencia = 0, bonus = "0", nome = "Perícia B"),
-    PericiasData(proficiencia = 1, bonus = "4", nome = "Perícia C"),
-    PericiasData(proficiencia = 2, bonus = "2", nome = "Perícia U"),
-    PericiasData(proficiencia = 0, bonus = "0", nome = "Perícia I"),
-    PericiasData(proficiencia = 1, bonus = "4", nome = "Perícia V")
-)
-
-private fun <T> List<T>.replaceAt(index: Int, value: T) =
-    toMutableList().also { it[index] = value }
+import com.example.app_rpg.data.local.AtributoData
+import com.example.app_rpg.data.local.PericiasData
+import com.example.app_rpg.data.local.StatusData
+import com.example.app_rpg.data.local.CharacterSheet
+import com.example.app_rpg.viewmodel.FichaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-fun FichaPersonagemScreenPreview(){
-    FichaPersonagemScreen(Modifier, remember { MeuViewModel(Application()) })
+private fun FichaPersonagemContentPreview() {
+    FichaPersonagemContent(Modifier, CharacterSheet())
 }
 
 @Composable
 fun FichaPersonagemScreen(
     modifier: Modifier,
-    viewModel: MeuViewModel
+    viewModel: FichaViewModel
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    FichaPersonagemContent(
+        modifier = modifier,
+        draft = uiState.rascunho,
+        onNameChange = viewModel::atualizarNome,
+        onLevelChange = viewModel::atualizarLevel,
+        onClassChange = viewModel::atualizarClasse,
+        onRaceChange = viewModel::atualizarRaca,
+        onAtributoChange = viewModel::atualizarAtributo,
+        onStatusChange = viewModel::atualizarStatus,
+        onProficienciaClick = viewModel::alternarProficiencia,
+        onBonusChange = viewModel::atualizarBonusPericia,
+        onNomePericiaChange = viewModel::atualizarNomePericia,
+        onCancel = viewModel::cancelarEdicao,
+        onSave = viewModel::salvarFicha
+    )
+}
+
+@Composable
+private fun FichaPersonagemContent(
+    modifier: Modifier,
+    draft: CharacterSheet,
+    onNameChange: (String) -> Unit = {},
+    onLevelChange: (String) -> Unit = {},
+    onClassChange: (String) -> Unit = {},
+    onRaceChange: (String) -> Unit = {},
+    onAtributoChange: (Int, String) -> Unit = { _, _ -> },
+    onStatusChange: (Int, String) -> Unit = { _, _ -> },
+    onProficienciaClick: (Int) -> Unit = {},
+    onBonusChange: (Int, String) -> Unit = { _, _ -> },
+    onNomePericiaChange: (Int, String) -> Unit = { _, _ -> },
+    onCancel: () -> Unit = {},
+    onSave: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-
-    val draft = viewModel.characterDraft
-
-    LaunchedEffect(Unit) {
-        viewModel.carregarFicha()
-    }
 
     Column(
         modifier = modifier
@@ -140,41 +119,37 @@ fun FichaPersonagemScreen(
         HeaderSection(
             name = draft.name,
             level = draft.level,
-            onNameChange = { viewModel.atualizarRascunhoFicha(draft.copy(name = it)) },
-            onLevelChange = { viewModel.atualizarRascunhoFicha(draft.copy(level = it)) }
+            onNameChange = onNameChange,
+            onLevelChange = onLevelChange
         )
         ClasseRacaSection(
             characterClass = draft.characterClass,
             race = draft.race,
-            onClassChange = { viewModel.atualizarRascunhoFicha(draft.copy(characterClass = it)) },
-            onRaceChange = { viewModel.atualizarRascunhoFicha(draft.copy(race = it)) }
+            onClassChange = onClassChange,
+            onRaceChange = onRaceChange
         )
         AtributosSection(
             attributes = draft.attributes,
-            onChange = { index, attribute ->
-                viewModel.atualizarRascunhoFicha(draft.copy(attributes = draft.attributes.replaceAt(index, attribute)))
-            }
+            onChange = onAtributoChange
         )
         StatusSection(
             status = draft.status,
-            onChange = { index, status ->
-                viewModel.atualizarRascunhoFicha(draft.copy(status = draft.status.replaceAt(index, status)))
-            }
+            onChange = onStatusChange
         )
         PericiaSection(
             skills = draft.skills,
-            onChange = { index, skill ->
-                viewModel.atualizarRascunhoFicha(draft.copy(skills = draft.skills.replaceAt(index, skill)))
-            }
+            onProficienciaClick = onProficienciaClick,
+            onBonusChange = onBonusChange,
+            onNomeChange = onNomePericiaChange
         )
         BotoesAcaoSection(
             onCancel = {
                 focusManager.clearFocus()
-                viewModel.cancelarEdicaoFicha()
+                onCancel()
             },
             onSave = {
                 focusManager.clearFocus()
-                viewModel.salvarFicha()
+                onSave()
                 Toast.makeText(context, "Ficha salva com sucesso", Toast.LENGTH_SHORT).show()
             }
         )
@@ -202,7 +177,7 @@ fun HeaderSection(
         )
         CampoTexto(
             value = level,
-            onValueChange = { novo -> onLevelChange(novo.filter { it.isDigit() }.take(2)) },
+            onValueChange = onLevelChange,
             label = "Level",
             keyboardType = KeyboardType.Number,
             modifier = Modifier.weight(1f)
@@ -241,7 +216,7 @@ fun ClasseRacaSection(
 @Composable
 fun AtributosSection(
     attributes: List<AtributoData>,
-    onChange: (Int, AtributoData) -> Unit
+    onChange: (Int, String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         attributes.withIndex().chunked(3).forEach { linha ->
@@ -253,9 +228,7 @@ fun AtributosSection(
                     CirculoAtributo(
                         valor = atributo.valor,
                         label = atributo.label,
-                        onValueChange = { novo ->
-                            onChange(index, atributo.copy(valor = novo.filter { it.isDigit() }.take(2)))
-                        }
+                        onValueChange = { novo -> onChange(index, novo) }
                     )
                 }
             }
@@ -267,7 +240,7 @@ fun AtributosSection(
 @Composable
 fun StatusSection(
     status: List<StatusData>,
-    onChange: (Int, StatusData) -> Unit
+    onChange: (Int, String) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -277,7 +250,7 @@ fun StatusSection(
             CardStatus(
                 valor = item.valor,
                 label = item.label,
-                onValueChange = { onChange(index, item.copy(valor = it.take(4))) },
+                onValueChange = { novo -> onChange(index, novo) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -288,7 +261,9 @@ fun StatusSection(
 @Composable
 fun PericiaSection(
     skills: List<PericiasData>,
-    onChange: (Int, PericiasData) -> Unit
+    onProficienciaClick: (Int) -> Unit,
+    onBonusChange: (Int, String) -> Unit,
+    onNomeChange: (Int, String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -312,14 +287,9 @@ fun PericiaSection(
                             proficiencia = pericia.proficiencia,
                             bonus = pericia.bonus,
                             nome = pericia.nome,
-                            onProficienciaClick = {
-                                onChange(index, pericia.copy(proficiencia = (pericia.proficiencia + 1) % 3))
-                            },
-                            onBonusChange = { novo ->
-                                val bonus = novo.filterIndexed { i, c -> c.isDigit() || (i == 0 && c == '-') }
-                                onChange(index, pericia.copy(bonus = bonus.take(3)))
-                            },
-                            onNomeChange = { onChange(index, pericia.copy(nome = it)) }
+                            onProficienciaClick = { onProficienciaClick(index) },
+                            onBonusChange = { novo -> onBonusChange(index, novo) },
+                            onNomeChange = { novo -> onNomeChange(index, novo) }
                         )
                     }
                 }

@@ -1,8 +1,9 @@
-package com.example.app_rpg
+package com.example.app_rpg.data.local
 
 import androidx.annotation.DrawableRes
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.app_rpg.R
 
 data class itemCategory(
     val nome: String,

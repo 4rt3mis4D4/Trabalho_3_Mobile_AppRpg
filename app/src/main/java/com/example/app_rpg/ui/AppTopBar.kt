@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.app_rpg.ui.theme.LocalModePalette
 import com.example.app_rpg.ui.theme.MasterPalette
 import com.example.app_rpg.ui.theme.corBrancoPuro
+import com.example.app_rpg.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

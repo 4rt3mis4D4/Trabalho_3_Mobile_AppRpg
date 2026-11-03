@@ -1,4 +1,4 @@
-package com.example.app_rpg
+package com.example.app_rpg.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,80 +8,26 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import com.example.app_rpg.ui.theme.*
-
-private val generos = listOf("Pop", "Rock", "MPB")
-
-@Entity(tableName = "musicas")
-data class Musica(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val titulo: String,
-    val artista: String,
-    val genero: String
-)
+import com.example.app_rpg.data.local.Musica
+import com.example.app_rpg.data.local.generosMusica
+import com.example.app_rpg.viewmodel.MusicaUiState
+import com.example.app_rpg.viewmodel.MusicaViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
+fun Playlist(modifier: Modifier = Modifier, viewModel: MusicaViewModel) {
     val palette = LocalModePalette.current
     val estadoScroll = rememberLazyListState()
-    val musicas = viewModel.musicas
-
-    LaunchedEffect(Unit) {
-        viewModel.carregarMusicas()
-    }
-
-    var pesquisa by rememberSaveable { mutableStateOf("") }
-    var generoSelecionado by rememberSaveable {
-        mutableStateOf<String?>(null)
-    }
-
-    var formularioAberto by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var musicaEmEdicaoId by rememberSaveable {
-        mutableStateOf<Int?>(null)
-    }
-    var musicaParaExcluirId by rememberSaveable {
-        mutableStateOf<Int?>(null)
-    }
-    val musicaEmEdicao = musicas.firstOrNull { it.id == musicaEmEdicaoId }
-    val musicaParaExcluir = musicas.firstOrNull { it.id == musicaParaExcluirId }
-
-    // Reprodução simulada
-    var musicaAtualId by rememberSaveable {
-        mutableStateOf<Int?>(null)
-    }
-    var estaTocando by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    val musicaAtual = musicas.firstOrNull {
-        it.id == musicaAtualId
-    }
-
-    val musicasFiltradas = musicas.filter { musica ->
-        (generoSelecionado == null ||
-                musica.genero == generoSelecionado) &&
-                (pesquisa.isBlank() ||
-                        musica.titulo.contains(
-                            pesquisa.trim(),
-                            ignoreCase = true
-                        ) ||
-                        musica.artista.contains(
-                            pesquisa.trim(),
-                            ignoreCase = true
-                        ))
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val musicasFiltradas = uiState.musicasFiltradas
+    val musicaAtual = uiState.musicaAtual
 
     // Column externa somente para separar
     // a área rolável da barra de reprodução.
@@ -121,8 +67,8 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
             // Pesquisa
             item {
                 TextField(
-                    value = pesquisa,
-                    onValueChange = { pesquisa = it },
+                    value = uiState.pesquisa,
+                    onValueChange = viewModel::atualizarPesquisa,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text("Pesquisar música ou artista")
@@ -146,17 +92,10 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    generos.forEach { genero ->
+                    generosMusica.forEach { genero ->
                         FilterChip(
-                            selected = generoSelecionado == genero,
-                            onClick = {
-                                generoSelecionado =
-                                    if (generoSelecionado == genero) {
-                                        null
-                                    } else {
-                                        genero
-                                    }
-                            },
+                            selected = uiState.generoSelecionado == genero,
+                            onClick = { viewModel.alternarFiltroGenero(genero) },
                             label = { Text(genero) },
                             modifier = Modifier.weight(1f),
                             colors = FilterChipDefaults.filterChipColors(
@@ -173,10 +112,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
             // Botão adicionar música
             item {
                 Button(
-                    onClick = {
-                        musicaEmEdicaoId = null
-                        formularioAberto = true
-                    },
+                    onClick = { viewModel.abrirFormulario() },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = palette.accent
@@ -187,7 +123,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
             }
 
             // Mensagem se nenhuma música for encontrada
-            if (musicasFiltradas.isEmpty()) {
+            if (!uiState.carregando && musicasFiltradas.isEmpty()) {
                 item {
                     Text(
                         text = "Nenhuma música encontrada.",
@@ -206,29 +142,17 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
                 MusicaCard(
                     musica = musica,
 
-                    tocando = musicaAtualId == musica.id &&
-                            estaTocando,
+                    tocando = uiState.musicaAtualId == musica.id &&
+                            uiState.estaTocando,
 
-                    pausada = musicaAtualId == musica.id &&
-                            !estaTocando,
+                    pausada = uiState.musicaAtualId == musica.id &&
+                            !uiState.estaTocando,
 
-                    onTocar = {
-                        if (musicaAtualId == musica.id) {
-                            estaTocando = !estaTocando
-                        } else {
-                            musicaAtualId = musica.id
-                            estaTocando = true
-                        }
-                    },
+                    onTocar = { viewModel.tocar(musica) },
 
-                    onEditar = {
-                        musicaEmEdicaoId = musica.id
-                        formularioAberto = true
-                    },
+                    onEditar = { viewModel.abrirFormulario(musica) },
 
-                    onExcluir = {
-                        musicaParaExcluirId = musica.id
-                    }
+                    onExcluir = { viewModel.pedirExclusao(musica) }
                 )
             }
         }
@@ -251,7 +175,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
                     modifier = Modifier.padding(12.dp)
                 ) {
                     Text(
-                        text = if (estaTocando) {
+                        text = if (uiState.estaTocando) {
                             "♫ Tocando agora (simulação)"
                         } else {
                             "⏸ Música pausada (simulação)"
@@ -277,15 +201,13 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
                             Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = {
-                                estaTocando = !estaTocando
-                            },
+                            onClick = viewModel::alternarReproducao,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = palette.accent
                             )
                         ) {
                             Text(
-                                if (estaTocando) {
+                                if (uiState.estaTocando) {
                                     "Pausar"
                                 } else {
                                     "Continuar"
@@ -294,10 +216,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
                         }
 
                         TextButton(
-                            onClick = {
-                                musicaAtualId = null
-                                estaTocando = false
-                            }
+                            onClick = viewModel::pararReproducao
                         ) {
                             Text(
                                 "Parar",
@@ -311,35 +230,22 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
     }
 
     // Formulário de cadastro e edição
-    if (formularioAberto) {
+    if (uiState.formularioAberto) {
         FormularioMusica(
-            musica = musicaEmEdicao,
-
-            onCancelar = {
-                formularioAberto = false
-            },
-
-            onSalvar = { titulo, artista, genero ->
-                viewModel.salvarMusica(
-                    Musica(
-                        id = musicaEmEdicao?.id ?: 0,
-                        titulo = titulo,
-                        artista = artista,
-                        genero = genero
-                    )
-                )
-                formularioAberto = false
-            }
+            uiState = uiState,
+            onTituloChange = viewModel::atualizarFormTitulo,
+            onArtistaChange = viewModel::atualizarFormArtista,
+            onGeneroChange = viewModel::atualizarFormGenero,
+            onCancelar = viewModel::fecharFormulario,
+            onSalvar = viewModel::salvarMusica
         )
     }
 
     // Confirmação de exclusão
-    musicaParaExcluir?.let { musica ->
+    uiState.musicaParaExcluir?.let { musica ->
 
         AlertDialog(
-            onDismissRequest = {
-                musicaParaExcluirId = null
-            },
+            onDismissRequest = viewModel::cancelarExclusao,
 
             title = {
                 Text("Excluir música?")
@@ -351,16 +257,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
 
             confirmButton = {
                 TextButton(
-                    onClick = {
-                        viewModel.excluirMusica(musica)
-
-                        if (musicaAtualId == musica.id) {
-                            musicaAtualId = null
-                            estaTocando = false
-                        }
-
-                        musicaParaExcluirId = null
-                    }
+                    onClick = { viewModel.excluirMusica(musica) }
                 ) {
                     Text("Excluir")
                 }
@@ -368,9 +265,7 @@ fun Playlist(modifier: Modifier = Modifier, viewModel: MeuViewModel) {
 
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        musicaParaExcluirId = null
-                    }
+                    onClick = viewModel::cancelarExclusao
                 ) {
                     Text("Cancelar")
                 }
@@ -434,39 +329,38 @@ private fun MusicaCard(
 
 @Composable
 private fun FormularioMusica(
-    musica: Musica?,
+    uiState: MusicaUiState,
+    onTituloChange: (String) -> Unit,
+    onArtistaChange: (String) -> Unit,
+    onGeneroChange: (String) -> Unit,
     onCancelar: () -> Unit,
-    onSalvar: (String, String, String) -> Unit
+    onSalvar: () -> Unit
 ) {
-    var titulo by rememberSaveable(musica) { mutableStateOf(musica?.titulo.orEmpty()) }
-    var artista by rememberSaveable(musica) { mutableStateOf(musica?.artista.orEmpty()) }
-    var genero by rememberSaveable(musica) { mutableStateOf(musica?.genero ?: generos.first()) }
-
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(if (musica == null) "Adicionar música" else "Editar música") },
+        title = { Text(if (uiState.musicaEmEdicaoId == null) "Adicionar música" else "Editar música") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
+                    value = uiState.formTitulo,
+                    onValueChange = onTituloChange,
                     label = { Text("Nome da música") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = artista,
-                    onValueChange = { artista = it },
+                    value = uiState.formArtista,
+                    onValueChange = onArtistaChange,
                     label = { Text("Artista") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text("Gênero")
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    generos.forEach { opcao ->
+                    generosMusica.forEach { opcao ->
                         FilterChip(
-                            selected = genero == opcao,
-                            onClick = { genero = opcao },
+                            selected = uiState.formGenero == opcao,
+                            onClick = { onGeneroChange(opcao) },
                             label = { Text(opcao) }
                         )
                     }
@@ -475,8 +369,8 @@ private fun FormularioMusica(
         },
         confirmButton = {
             TextButton(
-                enabled = titulo.isNotBlank() && artista.isNotBlank(),
-                onClick = { onSalvar(titulo.trim(), artista.trim(), genero) }
+                enabled = uiState.formularioValido,
+                onClick = onSalvar
             ) { Text("Salvar") }
         },
         dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar") } }

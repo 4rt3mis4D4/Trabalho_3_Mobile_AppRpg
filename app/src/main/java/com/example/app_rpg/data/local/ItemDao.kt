@@ -1,10 +1,11 @@
-package com.example.app_rpg
+package com.example.app_rpg.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ItemDao {
@@ -13,7 +14,7 @@ interface ItemDao {
     suspend fun inserir(item: ItemRpg): Long
 
     @Query("SELECT * FROM itens ORDER BY id")
-    suspend fun buscarTodos(): List<ItemRpg>
+    fun buscarTodos(): Flow<List<ItemRpg>>
 
     @Update
     suspend fun atualizar(item: ItemRpg)
@@ -23,7 +24,4 @@ interface ItemDao {
 
     @Query("SELECT * FROM itens WHERE id = :id")
     suspend fun buscarPorId(id: Int): ItemRpg?
-
-    @Query("SELECT * FROM itens WHERE id IN (:ids) ORDER BY id")
-    suspend fun buscarPorIds(ids: List<Int>): List<ItemRpg>
 }
